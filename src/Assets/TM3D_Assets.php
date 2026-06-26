@@ -45,10 +45,10 @@
          * Enqueue necessary scripts and styles for the 3D model viewer
          * Called from shortcode handler in TM3D_Model::render_product_viewer()
          *
-         * @param array $product_data Product data to be passed to JavaScript
+         * @param array $data global data to be passed to JavaScript
          * @return void
          */
-        public static function enqueue_assets(array $product_data): void
+        public static function enqueue_assets(array $data): void
         
         {
 
@@ -102,7 +102,7 @@
                 'tm-three-viewer',
                 'TM3DPlugin',
                 [
-                    'colourOptions' => $product_data,
+                    'data' => $data ?? [],
                     'version' => TM3D_VERSION,
                     'url'     => TM3D_URL,
                 ]

@@ -78,7 +78,7 @@
                 $trace[] = 'ID + colour validation';
 
                 $product_type = self::get_product_type($params['id']);
-                $trace[] = "Product type: {$product_type}";
+                $trace[] = "Product type: " . $product_type;
 
                 $valid_colours = array_keys(self::$product_data[$product_type]['colour_options'] ?? []);
 
@@ -113,6 +113,7 @@
                         $trace[] = 'Metal INVALID';
                         error_log(print_r($trace, true));
                         return self::return_defaults();
+
                     }
 
                     $trace[] = 'Metal valid';
@@ -223,9 +224,22 @@
 
             // Add the first model's SKU to the combined array
             $combined_arr['sku'] = $first_model['sku'] ?? '';
+
+            // Add product type to the combined array
+            $combined_arr['product_type'] = self::get_product_type($first_model['id'] ?? '');
             
-            // Determine default model size and add it to the combined array
+            // Add model sizes to the combined array
             $combined_arr['model_sizes'] = $first_model['model_sizes'] ?? [];
+
+            // Determine default model size and add it to the combined array
+            $combined_arr['default_model_size'] = '';
+
+            foreach ($combined_arr['model_sizes'] ?? [] as $size) {
+                if (!empty($size['is_default'])) {
+                    $combined_arr['default_model_size'] = $size['label'] ?? '';
+                    break;
+                }
+            }
 
             // Return the combined array of default values
             return $combined_arr;
@@ -281,6 +295,9 @@
 
                     // Get the ID
                     $field_values[$id]['id'] = $id;
+
+                    // Get the product type
+                    $field_values[$id]['product_type'] = self::get_product_type($id);
 
                     // Get the title
                     $field_values[$id]['title'] = get_the_title();

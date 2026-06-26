@@ -45,7 +45,7 @@
         {
 
             // Enqueue necessary scripts and styles
-            TM3D_Assets::enqueue_assets(self::$product_data);
+            TM3D_Assets::enqueue_assets(self::$data);
 
             // Render the import map and the configurator drawers
             return self::import_map_markup() . self::render_drawers();
@@ -124,13 +124,13 @@
         public static function render_drawers(): string {
 
             // Extract first model to populate filters and options with default values
-            $first_model = self::$models[array_key_first(self::$models)] ?? [];
+            //$first_model = self::$models[array_key_first(self::$models)] ?? [];
 
             if (empty(self::$models)) {
                 return '<div class="configurator-error">No models found</div>';
             }
 
-            $first_id = array_key_first(self::$models);
+            $first_id = self::$initial_state['id'] ?? array_key_first(self::$models);
             $product  = wc_get_product(self::$models[$first_id]['id']);
 
             if (!$product) {
@@ -144,7 +144,7 @@
             $filtered_colour_options = self::$product_data[$product_type]['colour_options'] ?? [];
 
             // Determine which top colour is currently selected to conditionally show/hide base and metal options based on top selection
-            $current_top = implode('_', explode(' ', $first_model['default_colour_options']['_tmpa_top_colour'] ?? []));
+            $current_top = implode('_', explode(' ', self::$initial_state['top'] ?? []));
 
             // Get allowed bases for the current top selection from the colour options data
             $bases_for_current_top = $filtered_colour_options[$current_top]['base'] ?? [];
@@ -230,6 +230,7 @@
                                                                     <?php echo (self::$initial_state['id'] === $model['id']) ? 'checked' : ''; 
                                                                     ?>
                                                                     data-sku="<?php echo esc_attr($model['sku']); ?>"
+                                                                    data-product-type="<?php echo esc_attr($model['product_type']); ?>"
                                                                 >
                                                                 <div>
                                                                     <img class="swatch" src="<?php echo $model['url']; ?>" alt="<?php echo $model['title']; ?>"/>
@@ -343,9 +344,9 @@
                                                 </div>
                                                 <div class="wapf-field-input">
                                                     <select name="product-model-size" class="wapf-input">
-                                                        <?php foreach($first_model['model_sizes'] as $model) : ?>
+                                                        <?php foreach(self::$initial_state['model_sizes'] as $model) : ?>
                                                             <?php
-                                                                $inc_vat = wc_get_price_including_tax(wc_get_product($first_model['id']), array('price' => $model['price']));
+                                                                $inc_vat = wc_get_price_including_tax(wc_get_product(self::$initial_state['id']), array('price' => $model['price']));
                                                             ?>
                                                             <option 
                                                                 value="<?php echo esc_attr($model['label']); ?>" 
@@ -366,7 +367,7 @@
                         
                                                 <div class="wapf-field-description">
                                                     <span class="model-dims">
-                                                        <?php foreach($first_model['model_sizes'] as $model) : ?>
+                                                        <?php foreach(self::$initial_state['model_sizes'] as $model) : ?>
                                                             <span class="model-dim model-<?php echo esc_html($model['label']); ?>"><?php echo esc_html($model['dims']); ?></span>
                                                         <?php endforeach; ?>
                                                     </span>

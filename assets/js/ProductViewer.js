@@ -10,7 +10,7 @@ export default class ProductViewer {
 
         // Main container where the 3D scene will render
         this.container = document.querySelector(containerSelector);
-        console.log('this.container', this.container);
+
         if (!this.container) {
             console.error(`[ProductRenders] Container not found for selector: ${containerSelector}`);
         }
@@ -134,21 +134,16 @@ export default class ProductViewer {
         document.addEventListener('webkitfullscreenchange', this.fullscreenChangeHandler);
         document.addEventListener('msfullscreenchange', this.fullscreenChangeHandler);
 
-        // Listen for custom event when colour options change
-        window.addEventListener('colourOptionsChanged', (e) => {
-            this.updateColourOptions(e);
-        });
-
     }
 
     /**
-     * Update the model's colour options from colour default rules in colourOptions.js
-     * Function triggered by the custom 'colourOptionsChanged' event dispatched from 
-     * the colour options module when a swatch is clicked or on initial load
-     * @param {object} e 
+     * Updates the selected colour options based on the event detail
+     * @param {object} selectedOptions - The selected colour options from the event detail 
      * @returns {void}
      */
-    updateColourOptions(e) {
+    updateColourOptions(selectedOptions) {
+
+        console.log(selectedOptions);
 
         // Mapping of layer keys from event to our defaults structure
         const layerMap = {
@@ -161,13 +156,13 @@ export default class ProductViewer {
         }
 
         // Extract the defaults object from the event details
-        const layerValues = e.detail.defaults;
+        //const layerValues = e.detail.defaults;
 
         // Build an update object based on the event details and our mapping
         const update = {};
 
         // Iterate over expected keys and map them to our defaults structure
-        for (const [layer, data] of Object.entries(layerValues)) {
+        for (const [layer, data] of Object.entries(selectedOptions)) {
 
             // layer will be 'top', 'base', 'metal', etc.
             // data will be the object for that layer (e.g., { filename, swatchName })
@@ -229,93 +224,6 @@ export default class ProductViewer {
 
         // Join the query parts with '&' and prepend with '?' to form the full query string
         return '?' + queryParts.join('&');
-    }
-
-    /**
-     * Sets event listeners for color swatches to update the model dynamically
-     * @returns {void}
-     */
-    // attachSwatchListeners() {
-
-    //     // Mapping of field labels to our query parameter keys
-    //     const map = {
-    //         'Top Colour': 'colour',
-    //         'Metal Edge Veneer': 'metalcolour',
-    //         'Base': 'secondcolour'
-    //     };
-
-    //     // Select all swatch group containers on the page
-    //     const swatchGroups = document.querySelectorAll('.obj-base .wapf-image-swatch-wrapper, .obj-metal-edge-veneer .wapf-image-swatch-wrapper');
-
-    //     // Loop through each swatch group
-    //     swatchGroups.forEach(swatchGroup => {
-
-    //         // Find all individual swatches inside this group
-    //         const swatches = swatchGroup.querySelectorAll('.wapf-swatch');
-
-    //         // Loop through each swatch inside the group
-    //         swatches.forEach(swatch => {
-
-    //             // Add a click event listener for when the user clicks on a swatch
-    //             swatch.addEventListener('click', () => {
-
-    //                 // Get the field label text related to this swatch group
-    //                 const fieldLabel = swatchGroup.parentElement?.parentElement
-    //                     ?.querySelector('.wapf-field-label label span')
-    //                     ?.textContent;
-
-    //                 // Extract swatch name from label    
-    //                 const swatchName = swatch.querySelector('label').textContent;
-
-    //                 // Get the image source URL from the clicked swatch
-    //                 const imgSrc = swatch.querySelector('img')?.src;
-
-    //                 // Extract a clean identifier from the image URL using a regex
-    //                 // Matches the part after "uploads/" and before "-{width}x{height}.jpg"
-    //                 const match = imgSrc?.match(/uploads\/(.+?)-\d+x\d+\.jpg/);
-    //                 const result = match ? match[1] : null;
-
-    //                 // If we have a valid result AND a corresponding map entry for the fieldLabel
-    //                 if (result && map[fieldLabel]) {
-
-    //                     // Build a query string from the mapped key and extracted result
-    //                     // Example: { material: "calacatta-gold" }
-    //                     this.queryString = this.buildQueryString({ [map[fieldLabel]]: result });
-
-    //                     // Reload or update the model based on new swatch selection
-    //                     this.loadModel();
-    //                 }
-
-    //                 // Update the URL in the browser to reflect selected swatches
-    //                 this.updateURL({ [map[fieldLabel]]: swatchName });
-
-    //             });
-    //         });
-    //     });
-    // }
-
-    /**
-     * Sets event listeners for model select changes to update the URL dynamically
-     * @returns {void}
-     */
-    updateModel() {
-
-        // Get model select element from DOM
-        const modelSelect = document.querySelector('.obj-model select');
-        if (!modelSelect) return;
-
-        // Listen for changes
-        modelSelect.addEventListener('change', () => {
-
-            // Extract selected model size
-            const selectedOption = modelSelect.options[modelSelect.selectedIndex];
-            const label = selectedOption.getAttribute('data-label');
-
-            // Update URL with new model size
-            this.updateURL({'model': label});
-
-        });
-
     }
 
     /**
@@ -629,36 +537,6 @@ export default class ProductViewer {
         ground.position.set(0, 0, 0);
         ground.rotation.y = Math.PI / 4;
         this.scene.add(ground);
-    }
-
-    /**
-     * External entry point used by Product.js
-     * This replaces swatch-driven logic inside the renderer.
-     */
-    updateFromState(state) {
-
-        if (!state) return;
-
-        const update = {};
-
-        // map state → renderer query params
-        if (state.selected?.colour) {
-            update.colour = state.selected.colour;
-        }
-
-        if (state.selected?.metalcolour) {
-            update.metalcolour = state.selected.metalcolour;
-        }
-
-        if (state.selected?.secondcolour) {
-            update.secondcolour = state.selected.secondcolour;
-        }
-
-        // rebuild query string using existing logic
-        this.queryString = this.buildQueryString(update);
-
-        // reload model (existing pipeline untouched)
-        this.loadModel();
     }
 
     /**
@@ -1016,30 +894,4 @@ export default class ProductViewer {
             });
     }
 
-    /**
-     * Add change event listeners to all swatch radio inputs (top, base, metal).
-     * If input is in obj-top-colour, update options and images.
-     * If input is in obj-base or obj-metal, only update images.
-     */
-    // addSwatchListeners = (viewer) => {
-
-    //     // Select all radio inputs in all swatch groups
-    //     const allInputs = document.querySelectorAll('.wapf-swatch input[type="radio"]');
-
-    //     allInputs.forEach(input => {
-
-    //         input.addEventListener('change', () => {
-
-    //             // Find which group this input belongs to
-    //             const productType = input.closest('.obj-product-type');
-
-    //             if(productType) {
-
-    //                 viewer.setProductModel(input.getAttribute('data-sku'));
-
-    //             }
-
-    //         });
-    //     });
-    // }
 }

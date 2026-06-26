@@ -7,13 +7,61 @@ export default class ProductRules {
         // Map option types to css classes
 		this.optionToClass = {
 			base: 'base',
-			//metal: 'metal-edge-veneer'
+			metal: 'metal-edge-veneer'
 		};
 
+        // Store reference to ProductState instance
         this.state = state;
     }
 
     // ===================== Option Logic & State Management ===================== //
+
+    /**
+     * Reset the selected options for the product based on the currently selected product type and top colour.
+     * This function is used to determine the default selections for base and edge groups based on 
+     * the selected product type and top colour, and to update the available options in the UI accordingly.
+     * @returns {string} The top colour to be used for the selected product type.
+     */
+    resetForProductType() {
+
+        // Get product type from current selected product type
+        const productType = document.querySelector('.obj-product-type input[type="radio"]:checked')?.getAttribute('data-product-type') || '';
+
+        // Check if top colour is valid for the selected product type
+        const topColour = document.querySelector('.obj-top-colour input[type="radio"]:checked')?.value || '';
+
+        // Get available options for the selected product type and top colour
+        const availableOptions = this.state.colourOptions?.[productType]?.colour_options || {};
+        
+        // If top colour is multi-word, convert spaces to underscores to match keys in colourOptions
+        const formattedTopColour = topColour.toLowerCase().trim().replace(/\s+/g, '_');
+        
+        // Check if the top colour is valid for the selected product type
+        const isTopColourValid = availableOptions.hasOwnProperty(formattedTopColour);
+
+console.log(`Is top colour "${topColour}" valid for product type "${productType}"?`, isTopColourValid);
+
+        // If the top colour is valid, set the available options for base and edge groups
+        if (isTopColourValid) {
+
+            return topColour;
+            
+        } else {
+
+            // If colour is not valid return the first available colour for the selected product type
+            const firstAvailableColour = Object.keys(availableOptions)[0] || '';
+
+            // Update the selected top colour in the DOM
+            const topColourInput = document.querySelector(`.obj-top-colour input[type="radio"][value="${firstAvailableColour}"]`);
+            
+            if (topColourInput) {
+                topColourInput.checked = true;
+            }
+
+            return firstAvailableColour;
+
+        }
+    }
 
     /**
      * Set available options for base and edge groups based on the selected top colour swatch.
@@ -21,26 +69,21 @@ export default class ProductRules {
      * @param {string} topColour - The name of the selected top colour swatch 
      */
     setColourOptions = (topColour) => {
-console.log(`Selected top colour: ${topColour}`);
+
         // If top colour is multi-word, convert spaces to underscores to match keys in colourOptions
         const formattedTopColour = topColour.toLowerCase().trim().replace(/\s+/g, '_');
 
-        //const formattedTopColour = topColour.toLowerCase().trim();
-
         // Set available bases and edges based on the swatch name
         this.state.availableOptions = this.getAvailableOptions(topColour);
-console.log(`Available options for ${formattedTopColour}:`, this.state.availableOptions);
+console.log(`Available options for top colour "${topColour}":`, this.state.availableOptions);
 		// Convert available options object to an array of [optionType, optionsArray] pairs for easier iteration
         const availableOptionsArr = Object.entries(this.state.availableOptions || {});
-
+console.log(`Available options array for top colour "${topColour}":`, availableOptionsArr);
         // Loop over available options and update the UI accordingly (e.g., show/hide or enable/disable options)
         this.showHideOptions(availableOptionsArr);
 
         // Finalize selected options after availability has been applied in the UI
         this.setSelectedOptions();
-
-        // Broadcast defaults once state is final
-        this.setDefaults();
 
     }
 
@@ -52,9 +95,12 @@ console.log(`Available options for ${formattedTopColour}:`, this.state.available
     getAvailableOptions(topColour) {
          // If top colour is multi-word, convert spaces to underscores to match keys in colourOptions
         const formattedTopColour = topColour.toLowerCase().trim().replace(/\s+/g, '_');
-console.log(`Available options for ${formattedTopColour}:`, this.state.availableOptions);
-        // Set available bases and edges based on the swatch name
-        return this.state.availableOptions?.[formattedTopColour] || {};
+
+        // Get product type from current selected product type
+        const productType = document.querySelector('.obj-product-type input[type="radio"]:checked')?.getAttribute('data-product-type') || '';
+
+        // Return available options for the selected top colour and product type, or an empty object if not found
+        return this.state.colourOptions?.[productType]?.colour_options?.[formattedTopColour] || {};
     }
 
     /**
@@ -93,10 +139,16 @@ console.log(`Available options for ${formattedTopColour}:`, this.state.available
             // Extract the value of the checked option and format it for comparison
             const value = input.value.toLowerCase().trim();
 
-            // Get the list of available options for this group from the availableOptions object
-            //const availableList = Array.isArray(this.state.availableOptions[key]) ? this.state.availableOptions[key] : [];
+            //const availableList = this.state.availableOptions?.[key] ?? [];
 
-            const availableList = this.state.availableOptions?.[key] ?? [];
+            // Get product type from current selected product type
+            const productType = document.querySelector('.obj-product-type input[type="radio"]:checked')?.getAttribute('data-product-type') || '';
+
+            // Check if top colour is valid for the selected product type
+            const topColour = document.querySelector('.obj-top-colour input[type="radio"]:checked')?.value || '';
+            const formattedTopColour = topColour.toLowerCase().trim().replace(/\s+/g, '_');
+
+            const availableList = this.state.colourOptions?.[productType]?.colour_options?.[formattedTopColour]?.[className] ?? [];
 
             if (availableList.length === 0) {
                 return;
@@ -104,7 +156,7 @@ console.log(`Available options for ${formattedTopColour}:`, this.state.available
 
             // Check if the currently checked option is in the list of available options
             const isAvailable = availableList.includes(value);
-console.log(`Is checked swatch for ${key} available?`, isAvailable);
+
             // Set up selectedOption variable to hold final value
             let selectedOption;
             
@@ -147,7 +199,7 @@ console.log(`Is checked swatch for ${key} available?`, isAvailable);
                 swatchName: selectedLabel
             };
 
-            console.log(`Selected option for ${key}:`, this.state.selectedOptions[key]);
+            console.log(`Selected option for ${key}:`, this.state.selectedOptions);
 
         });
 
@@ -171,22 +223,6 @@ console.log(`Is checked swatch for ${key} available?`, isAvailable);
             swatchName: topColour.value.trim()
         };
 
-    }
-
-	/**
-	 * Enforce defaults if the currently selected options for base and edge 
-     * are not available for the selected top colour.
-	 */
-    setDefaults = () => {
-
-        // Dispatch custom event with the default selections for base and edge groups based on the selected top colour
-        const event = new CustomEvent('colourOptionsChanged', {
-            detail: {
-                defaults: this.state.selectedOptions
-            }
-        });
-
-        window.dispatchEvent(event);
     }
 
     /**
@@ -224,8 +260,11 @@ console.log(`Is checked swatch for ${key} available?`, isAvailable);
         // Loop over available options and update the UI accordingly (e.g., show/hide or enable/disable options)
         availableOptionsArr.forEach(([optionType, optionsArray]) => {
 
+            // Map option type to corresponding layer class
+            const layerType = this.optionToClass[optionType];
+
             // Find non-matching options in DOM and disable them
-            const optionElements = document.querySelectorAll(`.obj-${this.optionToClass[optionType]} .wapf-swatch`);
+            const optionElements = document.querySelectorAll(`.obj-${layerType} .wapf-swatch`);
 
             optionElements.forEach(el => {
 
