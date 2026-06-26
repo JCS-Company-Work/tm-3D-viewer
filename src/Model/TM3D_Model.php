@@ -13,6 +13,7 @@
         private static array $data = [];
         private static array $models = [];
         private static array $product_data = [];
+        private static array $initial_state = [];
 
         /**
          * Initialise class by loading models and product data, registering shortcode, and converting JS scripts to module type
@@ -27,6 +28,7 @@
             self::$data = TM3D_Data::getData();
             self::$models = self::$data['models'] ?? [];
             self::$product_data = self::$data['product_data'] ?? [];
+            self::$initial_state = self::$data['initial_state'] ?? [];
 
             // Register the shortcode for the 3D model viewer
             add_shortcode('tm_model_viewer', [self::class, 'render_product_viewer']);
@@ -78,7 +80,7 @@
             </script>';
         }
 
-                /**
+        /**
          * Determine product type from WP categories
          *
          * @param object $product
@@ -166,7 +168,7 @@
             
                 <div class="configurator last-opened-none" id="configurator">
                     <!-- 3D viewer -->
-                    <div id="obj3dviewer" item-name="<?php echo esc_attr(self::$models[$first_id]['sku']); ?>" data-version="<?php echo esc_attr(TMPC_VERSION); ?>">
+                    <div id="obj3dviewer" item-name="<?php echo esc_attr(self::$initial_state['sku']); ?>" data-version="<?php echo esc_attr(TMPC_VERSION); ?>">
                         <section id="loading-screen"><div id="loader"></div></section>
                         <a href="#" class="obj3dviewer-toggle">Full Screen</a>
                     </div>
@@ -220,13 +222,13 @@
                                                         <div class="wapf-swatch wapf-swatch--image apf-pick-box">
                                                             <label aria-label="<?php echo $model['title']; ?>">
                                                                 <input 
+                                                                    id="<?php echo esc_attr($model['id']); ?>"
                                                                     type="radio" 
-                                                                    name="top_colour" 
+                                                                    name="product_type" 
                                                                     class="wapf-input"
                                                                     value="<?php echo esc_attr($model['title']); ?>" 
-                                                                    <?php echo (self::$product_data['selected']['top']['name'] === $model['title']) ? 'checked' : ''; 
+                                                                    <?php echo (self::$initial_state['id'] === $model['id']) ? 'checked' : ''; 
                                                                     ?>
-                                                                    data-sample-id="<?php echo esc_attr($model['id']); ?>"
                                                                     data-sku="<?php echo esc_attr($model['sku']); ?>"
                                                                 >
                                                                 <div>
@@ -253,7 +255,7 @@
                                                                     name="top_colour" 
                                                                     class="wapf-input"
                                                                     value="<?php echo esc_attr($colour_option['top']['name']); ?>" 
-                                                                    <?php echo ($first_model['default_colour_options']['_tmpa_top_colour'] === $colour_option['top']['name']) ? 'checked' : ''; 
+                                                                    <?php echo (self::$initial_state['top'] === $colour_option['top']['name']) ? 'checked' : ''; 
                                                                     ?>
                                                                     data-sample-id="<?php echo esc_attr($colour_option['top']['sample_id']); ?>"
                                                                 >
@@ -286,7 +288,7 @@
                                                                     name="base_colour"
                                                                     class="wapf-input"
                                                                     value="<?php echo esc_attr($base['name']); ?>"
-                                                                    <?php echo ($first_model['default_colour_options']['_tmpa_base_colour'] === $base['name']) ? 'checked' : ''; ?>
+                                                                    <?php echo (self::$initial_state['base'] === $base['name']) ? 'checked' : ''; ?>
                                                                     data-sample-id="<?php echo esc_attr($base['sample_id'] ?? ''); ?>"
                                                                 >
                                                                 <div>
@@ -320,7 +322,7 @@
                                                                                 name="metal_edge_veneer"
                                                                                 class="wapf-input"
                                                                                 value="<?php echo esc_attr($metal['name']); ?>"
-                                                                                <?php echo ($first_model['default_colour_options']['_tmpa_metal_colour'] === $metal['name']) ? 'checked' : ''; ?>
+                                                                                <?php echo (self::$initial_state['metal'] === $metal['name']) ? 'checked' : ''; ?>
                                                                             >
                                                                             <div>
                                                                                 <img class="swatch" src="<?php echo esc_url($metal['url'] ?? ''); ?>" alt="<?php echo esc_attr($metal['name']); ?>" />

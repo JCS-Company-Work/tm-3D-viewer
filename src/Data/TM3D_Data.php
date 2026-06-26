@@ -4,6 +4,8 @@
 
     class TM3D_Data {
     
+         private static array $models = [];
+
         /**
          * Load models and product data from the database and transient cache
          *
@@ -13,17 +15,18 @@
 
         {
             // Get all models and their associated SKU values from the database
-            $models = self::getProductModels();
+            self::$models = self::getProductModels();
 
             // Retrieve the colour options data from the transient cache based on product type
             $product_data = get_transient('tmpc_colour_options_all');
 
             // Check URL for initial product state parameters or determine default values from postmeta
-            //self::productInitialState();
+            $initial_state = self::productInitialState();
 
             return [
-                'models' => $models,
+                'models' => self::$models,
                 'product_data' => $product_data,
+                'initial_state' => $initial_state,
             ];
 
         }
@@ -33,34 +36,200 @@
          *
          * @return array Returns array of selected options to be used for image layer rendering and current status display
          */
-
         public static function productInitialState() {
 
-            // Resolve product ID once
-            //$product_id = $product_id ?: get_the_ID();
+            $trace = [];
 
-            // Resolve request URI from parameter or server variable
-            $request_uri = $request_uri ?? ($_SERVER['REQUEST_URI'] ?? '');
-
-            // Extract query string
+            $request_uri = $_SERVER['REQUEST_URI'] ?? '';
             $query = $request_uri ? parse_url($request_uri, PHP_URL_QUERY) : null;
 
-            if ($query) {
-                parse_str($query, $params);
+            $trace[] = 'Start';
+            $trace[] = "Query: " . ($query ?: '(none)');
 
-                // Only trigger URL logic if relevant params exist
-                if (
-                    !empty($params['colour']) ||
-                    !empty($params['base']) ||
-                    !empty($params['veneer']) ||
-                    !empty($params['model'])
-                ) {
-                    //return self::setProductDataFromURL($params, $product_id);
+            if (!$query) {
+                $trace[] = 'No query string';
+                error_log(print_r($trace, true));
+                return self::return_defaults();
+            }
+
+            parse_str($query, $params);
+            $trace[] = 'Params: ' . print_r($params, true);
+
+            $keys = ['id', 'colour', 'base', 'veneer', 'model'];
+
+            $hasValue = false;
+            foreach ($keys as $key) {
+                if (!empty($params[$key])) {
+                    $hasValue = true;
+                    break;
                 }
             }
 
-            // If no relevant URL params, return default product data based on database values 
-            //return self::setDefaultProductData($product_id);
+            if (!$hasValue) {
+                $trace[] = 'No recognised parameters';
+                error_log(print_r($trace, true));
+                return self::return_defaults();
+            }
+
+            $trace[] = 'Relevant parameters found';
+
+            if (!empty($params['id']) && !empty($params['colour'])) {
+
+                $trace[] = 'ID + colour validation';
+
+                $product_type = self::get_product_type($params['id']);
+                $trace[] = "Product type: {$product_type}";
+
+                $valid_colours = array_keys(self::$product_data[$product_type]['colour_options'] ?? []);
+
+                $hyphenated_colour = str_replace(' ', '_', strtolower($params['colour']));
+                $trace[] = "Checking colour: {$hyphenated_colour}";
+
+                if (!in_array($hyphenated_colour, $valid_colours, true)) {
+                    $trace[] = 'Colour INVALID';
+                    error_log(print_r($trace, true));
+                    return self::return_defaults();
+                }
+
+                $trace[] = 'Colour valid';
+
+                if (empty($params['base']) && empty($params['veneer'])) {
+                    $trace[] = 'No base/veneer supplied';
+                    error_log(print_r($trace, true));
+                    return self::return_defaults();
+                }
+
+                if (!self::isValidOption($product_type, 'base', $params)) {
+                    $trace[] = 'Base INVALID';
+                    error_log(print_r($trace, true));
+                    return self::return_defaults();
+                }
+
+                $trace[] = 'Base valid';
+
+                if ($product_type === 'edge') {
+
+                    if (!self::isValidOption($product_type, 'metal', $params)) {
+                        $trace[] = 'Metal INVALID';
+                        error_log(print_r($trace, true));
+                        return self::return_defaults();
+                    }
+
+                    $trace[] = 'Metal valid';
+                }
+
+                $trace[] = 'Returning URL parameters';
+                error_log(print_r($trace, true));
+
+                return array_intersect_key($params, array_flip($keys));
+            } else {
+                
+                $trace[] = 'ID or colour missing';
+                error_log(print_r($trace, true));
+                return self::return_defaults();
+            }
+
+        }
+
+        /**
+         * Determine product type from WP categories
+         *
+         * @param string $product_id The product ID to check
+         * @return string|null Returns 'solid', 'slim', 'edge' or null if no match
+         */
+        public static function get_product_type($product_id) {
+
+            // Get the product object
+            $product = wc_get_product($product_id);
+
+            // Guard against invalid product
+            if (!$product || !is_object($product) || !method_exists($product, 'get_id')) {
+                return null;
+            }
+
+            // Get product category slugs
+            $terms = get_the_terms($product->get_id(), 'product_cat');
+
+            if (empty($terms) || is_wp_error($terms)) {
+                return null;
+            }
+
+            // Define slugs of types to check
+            $slugs = ['solid', 'slim', 'edge'];
+
+            // Return the slug of the first matching category (ensure term_id is cast to int for comparison)
+            foreach($terms as $term) {
+                if (in_array($term->slug, $slugs)) {
+                    return $term->slug; 
+                }
+
+            }
+
+            // Return null if no matching category found
+            return null; 
+
+        }
+
+        /**
+         * Determine is current option is valid for top colour
+         *
+         * @param string $product_type The product type to check
+         * @param string $option_type The option type to check
+         * @param array $params The parameters containing the colour and option values
+         * @return boolean Returns true if the option is valid, false otherwise
+         */
+        public static function isValidOption($product_type, $option_type, $params) {
+
+            // Get valid options
+            $valid_options = self::$product_data[$product_type]['master_values'][$option_type][$params['colour']] ?? [];
+
+            // Check if the provided option is in the valid options array
+            return in_array($params[$option_type], $valid_options);
+
+        }
+
+        /**
+         * Return default colour options for the first model in the models array
+         *
+         * @return array default post meta values
+         */
+        public static function return_defaults() {
+
+            // Get first model from the models array
+            $first_model = self::$models[array_key_first(self::$models)];
+
+            // Check if default colour options exist for the first model
+            if (empty($first_model['default_colour_options'])) {
+                return [];
+            }
+
+            // Extract default values from first model
+            $defaults = $first_model['default_colour_options'];
+
+            // Remove '_tmpa_' and '_colour' from the keys to match parameter names
+            $formatted_keys = array_map(
+                fn($key) => str_replace(['_tmpa_', '_colour'], '', $key),
+                array_keys($defaults)
+            );
+
+            // Combine formatted keys with their values
+            $combined_arr = array_combine($formatted_keys, array_values($defaults));
+
+            // Add the first model's ID to the combined array
+            $combined_arr['id'] = $first_model['id'] ?? '';
+
+            // Add title to the combined array
+            $combined_arr['title'] = $first_model['title'] ?? '';
+
+            // Add the first model's SKU to the combined array
+            $combined_arr['sku'] = $first_model['sku'] ?? '';
+            
+            // Determine default model size and add it to the combined array
+            $combined_arr['model_sizes'] = $first_model['model_sizes'] ?? [];
+
+            // Return the combined array of default values
+            return $combined_arr;
+
         }
 
         /**
