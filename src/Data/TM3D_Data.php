@@ -4,7 +4,8 @@
 
     class TM3D_Data {
     
-         private static array $models = [];
+        private static array $models = [];
+        private static array $product_data = [];
 
         /**
          * Load models and product data from the database and transient cache
@@ -18,14 +19,14 @@
             self::$models = self::getProductModels();
 
             // Retrieve the colour options data from the transient cache based on product type
-            $product_data = get_transient('tmpc_colour_options_all');
+            self::$product_data = get_transient('tmpc_colour_options_all');
 
             // Check URL for initial product state parameters or determine default values from postmeta
             $initial_state = self::productInitialState();
 
             return [
                 'models' => self::$models,
-                'product_data' => $product_data,
+                'product_data' => self::$product_data,
                 'initial_state' => $initial_state,
             ];
 
@@ -38,25 +39,22 @@
          */
         public static function productInitialState() {
 
-            $trace = [];
-
+            // Get the request URI and parse the query string
             $request_uri = $_SERVER['REQUEST_URI'] ?? '';
             $query = $request_uri ? parse_url($request_uri, PHP_URL_QUERY) : null;
 
-            $trace[] = 'Start';
-            $trace[] = "Query: " . ($query ?: '(none)');
-
+            // If no query string is present, return default values
             if (!$query) {
-                $trace[] = 'No query string';
-                error_log(print_r($trace, true));
                 return self::return_defaults();
             }
 
+            // Parse the query string into an associative array
             parse_str($query, $params);
-            $trace[] = 'Params: ' . print_r($params, true);
 
+            // Define the keys to check for in the query parameters
             $keys = ['id', 'colour', 'base', 'veneer', 'model'];
 
+            // Check if any of the relevant parameters are present in the query string
             $hasValue = false;
             foreach ($keys as $key) {
                 if (!empty($params[$key])) {
@@ -65,68 +63,67 @@
                 }
             }
 
+            // If none of the relevant parameters are present, return default values
             if (!$hasValue) {
-                $trace[] = 'No recognised parameters';
-                error_log(print_r($trace, true));
                 return self::return_defaults();
             }
 
-            $trace[] = 'Relevant parameters found';
-
             if (!empty($params['id']) && !empty($params['colour'])) {
 
-                $trace[] = 'ID + colour validation';
-
+                // Determine product type from ID
                 $product_type = self::get_product_type($params['id']);
-                $trace[] = "Product type: " . $product_type;
 
-                $valid_colours = array_keys(self::$product_data[$product_type]['colour_options'] ?? []);
+                // Create array of valid colours for the product type
+                $valid_colours = array_keys(self::$product_data[$product_type]['colour_options']);
 
+                // Hyphenate the colour parameter for comparison
                 $hyphenated_colour = str_replace(' ', '_', strtolower($params['colour']));
-                $trace[] = "Checking colour: {$hyphenated_colour}";
 
+                // If hyphenated colour is not in the array of valid colours return default options
                 if (!in_array($hyphenated_colour, $valid_colours, true)) {
-                    $trace[] = 'Colour INVALID';
-                    error_log(print_r($trace, true));
                     return self::return_defaults();
                 }
 
-                $trace[] = 'Colour valid';
-
-                if (empty($params['base']) && empty($params['veneer'])) {
-                    $trace[] = 'No base/veneer supplied';
-                    error_log(print_r($trace, true));
-                    return self::return_defaults();
+                // Normalise URL parameters to match the frontend state
+                if (!empty($params['colour'])) {
+                    $params['top'] = $params['colour'];
                 }
 
+                // If no base is uspplied, default to first valid base as we have a top colour and a product type
                 if (!self::isValidOption($product_type, 'base', $params)) {
-                    $trace[] = 'Base INVALID';
-                    error_log(print_r($trace, true));
-                    return self::return_defaults();
+                    $params['base'] = self::$product_data[$product_type]['colour_options'][$hyphenated_colour]['base'][0] ?? '';
+                    error_log("Defaulting base to: " . $params['base']);
+                    error_log(print_r(self::$product_data[$product_type]['colour_options'][$hyphenated_colour]['base'][0], true));
                 }
 
-                $trace[] = 'Base valid';
-
+                // If this is an edge product check for metal
                 if ($product_type === 'edge') {
 
+                    // If no metal is supplied, default to first valid metal as we have a top colour and a product type
                     if (!self::isValidOption($product_type, 'metal', $params)) {
-                        $trace[] = 'Metal INVALID';
-                        error_log(print_r($trace, true));
-                        return self::return_defaults();
-
+                        $params['veneer'] = self::$product_data[$product_type]['colour_options'][$hyphenated_colour]['metal'][0] ?? '';
                     }
 
-                    $trace[] = 'Metal valid';
                 }
 
-                $trace[] = 'Returning URL parameters';
-                error_log(print_r($trace, true));
+                // Filter the parameters to only include the relevant keys
+                $final_values = array_intersect_key($params, array_flip($keys));
 
-                return array_intersect_key($params, array_flip($keys));
+                // The frontend expects "top" instead of "colour"
+                if (isset($final_values['colour'])) {
+                    $final_values['top'] = $final_values['colour'];
+                    unset($final_values['colour']);
+                }
+
+                // Add product type, sku, model sizes, and default model size to the final values
+                $final_values['product_type'] = $product_type;
+                $final_values['sku'] = self::$models[$params['id']]['sku'] ?? '';
+                $final_values['model_sizes'] = self::$models[$params['id']]['model_sizes'] ?? [];
+                $final_values['default_model_size'] = '';
+
+                return $final_values;
+
             } else {
-                
-                $trace[] = 'ID or colour missing';
-                error_log(print_r($trace, true));
                 return self::return_defaults();
             }
 

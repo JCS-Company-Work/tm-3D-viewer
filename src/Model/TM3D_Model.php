@@ -309,7 +309,7 @@
                                             </div>
                                         </div> 
                                         <div id="metal-container">   
-                                            <?php if(array_key_exists('metal', self::$product_data['master_values'][$product_type])) : ?>
+                                            <?php if(self::$initial_state['metal']) : ?>
                                                 <div class="obj-metal-edge-veneer wapf-field-container wapf-field-image-swatch field-6a9c491 wapf-required" style="width:100%;" for="6a9c491">
                                                     <div class="wapf-field-label">
                                                         <label><span>Metal Edge Veneer</span> <abbr class="required" title="required">*</abbr></label>
