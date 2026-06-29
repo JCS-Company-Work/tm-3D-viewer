@@ -141,9 +141,9 @@ export default class ProductViewer {
      * @param {object} selectedOptions - The selected colour options from the event detail 
      * @returns {void}
      */
-    updateColourOptions(selectedOptions) {
+    updateColourOptions(selectedOptions, productId = null) {
 
-        console.log(selectedOptions);
+        console.log(productId);
 
         // Mapping of layer keys from event to our defaults structure
         const layerMap = {
@@ -155,11 +155,10 @@ export default class ProductViewer {
             undercolour: 'undercolour'
         }
 
-        // Extract the defaults object from the event details
-        //const layerValues = e.detail.defaults;
-
         // Build an update object based on the event details and our mapping
         const update = {};
+
+        const urlParams = {};
 
         // Iterate over expected keys and map them to our defaults structure
         for (const [layer, data] of Object.entries(selectedOptions)) {
@@ -170,16 +169,14 @@ export default class ProductViewer {
 
                 // Update the corresponding entry in the update object with the cleaned filename
                 update[layerMap[layer]] = data.filename.replace(/\s+/g, '-').toLowerCase();
-                this.updateURL({ [layerMap[layer]]: data.swatchName });
+
+                // Build URL params
+                urlParams[layerMap[layer]] = data.swatchName;
 
                 // If base, also set secondcolourname as required by mtl.php for the base colour name to show in the UI
                 if (layer === 'base' && data.swatchName) {
                     update['secondcolourname'] = data.swatchName;
                 }
-                
-                update['meshcolour'] = 'meshcolour';
-                update['profilecolour'] = 'profilecolour';
-                update['undercolour'] = 'undercolour';
 
             } else {
                 // These are the fallback values for layers that don't have swatches (mesh, profile, undercolour)
@@ -188,6 +185,20 @@ export default class ProductViewer {
             }
 
         }
+
+        // Defaults
+        update.meshcolour = 'meshcolour';
+        update.profilecolour = 'profilecolour';
+        update.undercolour = 'undercolour';
+
+        // Add the product id once
+        if (productId) {
+            update.id = productId;
+            urlParams.id = productId;
+        }
+
+        // Update the URL
+        this.updateURL(urlParams);
 
         // Build query string from the update object and update our defaults
         this.queryString = this.buildQueryString(update);
@@ -234,6 +245,7 @@ export default class ProductViewer {
     updateURL(params = {}) {
 
         const map = {
+            'id': 'id',
             'colour': 'colour',
             'metalcolour': 'veneer',
             'secondcolour': 'base',
@@ -834,7 +846,6 @@ export default class ProductViewer {
         this.queryString = this.buildQueryString(initialValues);
 
         const texPath = TM3DPlugin?.url ? TM3DPlugin.url + 'assets/models/textures/' : '/wp-content/plugins/tm-three-viewer/assets/models/textures/';
-        console.log(texPath);
         
         const version = '?v=1';
         

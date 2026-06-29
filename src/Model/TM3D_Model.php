@@ -243,39 +243,42 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="obj-top-colour wapf-field-container">
-                                            <div class="wapf-field-label"><label><span>Top Colour</span></label></div>
-                                            <div class="wapf-field-group">
-                                                <div class="wapf-image-swatch-wrapper">
-                                                <input type="hidden" class="wapf-tf-h" value="0" name="top_colour">
-                                                    <?php foreach($filtered_colour_options as $colour_option) : ?>
-                                                        <div class="wapf-swatch wapf-swatch--image apf-pick-box">
-                                                            <label aria-label="<?php echo $colour_option['top']['name']; ?>">
-                                                                <input 
-                                                                    type="radio" 
-                                                                    name="top_colour" 
-                                                                    class="wapf-input"
-                                                                    value="<?php echo esc_attr($colour_option['top']['name']); ?>" 
-                                                                    <?php echo (self::$initial_state['top'] === $colour_option['top']['name']) ? 'checked' : ''; 
-                                                                    ?>
-                                                                    data-sample-id="<?php echo esc_attr($colour_option['top']['sample_id']); ?>"
-                                                                >
-                                                                <div>
-                                                                    <img class="swatch" src="<?php echo $colour_option['top']['url']; ?>" alt="<?php echo $colour_option['top']['name']; ?>"/>
-                                                                </div>
-                                                                <div class="wapf-swatch-label"><?php echo $colour_option['top']['name']; ?></div>
-                                                            </label>
-                                                        </div>
-                                                        
-                                                    <?php endforeach; ?>
+                                        <div id="top-container">
+                                            <div class="obj-top-colour wapf-field-container">
+                                                <div class="wapf-field-label"><label><span>Top Colour</span></label></div>
+                                                <div class="wapf-field-group">
+                                                    <div class="wapf-image-swatch-wrapper">
+                                                    <input type="hidden" class="wapf-tf-h" value="0" name="top_colour">
+                                                        <?php foreach($filtered_colour_options as $colour_option) : ?>
+                                                            <div class="wapf-swatch wapf-swatch--image apf-pick-box">
+                                                                <label aria-label="<?php echo $colour_option['top']['name']; ?>">
+                                                                    <input 
+                                                                        type="radio" 
+                                                                        name="top_colour" 
+                                                                        class="wapf-input"
+                                                                        value="<?php echo esc_attr($colour_option['top']['name']); ?>" 
+                                                                        <?php echo (self::$initial_state['top'] === $colour_option['top']['name']) ? 'checked' : ''; 
+                                                                        ?>
+                                                                        data-sample-id="<?php echo esc_attr($colour_option['top']['sample_id']); ?>"
+                                                                    >
+                                                                    <div>
+                                                                        <img class="swatch" src="<?php echo $colour_option['top']['url']; ?>" alt="<?php echo $colour_option['top']['name']; ?>"/>
+                                                                    </div>
+                                                                    <div class="wapf-swatch-label"><?php echo $colour_option['top']['name']; ?></div>
+                                                                </label>
+                                                            </div>
+                                                            
+                                                        <?php endforeach; ?>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="obj-base wapf-field-container wapf-field-image-swatch field-35e4fc4 wapf-required" style="width:100%;" for="35e4fc4">
-                                            <div class="wapf-field-label">
-                                                <label><span>Base</span> <abbr class="required" title="required">*</abbr></label>
-                                            </div>
-                                            <div class="wapf-field-input">
+                                        <div id="base-container">
+                                            <div class="obj-base wapf-field-container wapf-field-image-swatch field-35e4fc4 wapf-required" style="width:100%;" for="35e4fc4">
+                                                <div class="wapf-field-label">
+                                                    <label><span>Base</span> <abbr class="required" title="required">*</abbr></label>
+                                                </div>
+                                                <div class="wapf-field-input">
                                                 <div class="wapf-image-swatch-wrapper wapf-swatch-wrapper" style="--wapf-cols:auto-fill;--apf-col-width:68px">
                                                     
                                                     <input type="hidden" class="wapf-tf-h" value="0" name="base_colour">
@@ -304,7 +307,8 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            
+                                        </div> 
+                                        <div id="metal-container">   
                                             <?php if(array_key_exists('metal', self::$product_data['master_values'][$product_type])) : ?>
                                                 <div class="obj-metal-edge-veneer wapf-field-container wapf-field-image-swatch field-6a9c491 wapf-required" style="width:100%;" for="6a9c491">
                                                     <div class="wapf-field-label">
@@ -338,6 +342,8 @@
                                                     </div>
                                                 </div>
                                             <?php endif; ?>
+                                        </div>
+                                        <div id="model-container">
                                             <div class="obj-model wapf-field-container wapf-field-select field-2e633bf wapf-required has-pricing" style="width:100%;" for="2e633bf">
                                                 <div class="wapf-field-label">
                                                     <label for="wapf-4586-2e633bf"><span>Model</span> <abbr class="required" title="required">*</abbr></label>
@@ -373,6 +379,7 @@
                                                     </span>
                                                 </div>
                                             </div>
+                                        </div>
                                         </div>
                                     </div>
                                 </div>

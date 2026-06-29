@@ -28,7 +28,7 @@
                 'tm-three-viewer',
                 'tm-product-state',
                 'tm-product-rules',
-                'tm-three-controls'
+                'tm-configurator'
             ];
 
             // If the script handle is not in modules array, return the original tag
@@ -81,8 +81,8 @@
 
             // Enqueue the Product script, which contains the main logic for the 3D model viewer
             wp_enqueue_script(
-                'tm-three-controls',
-                TM3D_URL . 'assets/js/Product.js',
+                'tm-configurator',
+                TM3D_URL . 'assets/js/Configurator.js',
                 ['tm-product-rules'],
                 TM3D_VERSION,
                 true

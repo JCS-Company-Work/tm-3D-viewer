@@ -39,8 +39,6 @@ export default class ProductRules {
         // Check if the top colour is valid for the selected product type
         const isTopColourValid = availableOptions.hasOwnProperty(formattedTopColour);
 
-console.log(`Is top colour "${topColour}" valid for product type "${productType}"?`, isTopColourValid);
-
         // If the top colour is valid, set the available options for base and edge groups
         if (isTopColourValid) {
 
@@ -75,10 +73,10 @@ console.log(`Is top colour "${topColour}" valid for product type "${productType}
 
         // Set available bases and edges based on the swatch name
         this.state.availableOptions = this.getAvailableOptions(topColour);
-console.log(`Available options for top colour "${topColour}":`, this.state.availableOptions);
+
 		// Convert available options object to an array of [optionType, optionsArray] pairs for easier iteration
         const availableOptionsArr = Object.entries(this.state.availableOptions || {});
-console.log(`Available options array for top colour "${topColour}":`, availableOptionsArr);
+
         // Loop over available options and update the UI accordingly (e.g., show/hide or enable/disable options)
         this.showHideOptions(availableOptionsArr);
 
@@ -138,8 +136,6 @@ console.log(`Available options array for top colour "${topColour}":`, availableO
 
             // Extract the value of the checked option and format it for comparison
             const value = input.value.toLowerCase().trim();
-
-            //const availableList = this.state.availableOptions?.[key] ?? [];
 
             // Get product type from current selected product type
             const productType = document.querySelector('.obj-product-type input[type="radio"]:checked')?.getAttribute('data-product-type') || '';
