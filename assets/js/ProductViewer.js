@@ -143,8 +143,6 @@ export default class ProductViewer {
      */
     updateColourOptions(selectedOptions, productId = null) {
 
-        console.log(productId);
-
         // Mapping of layer keys from event to our defaults structure
         const layerMap = {
             top: 'colour',

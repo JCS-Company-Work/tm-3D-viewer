@@ -35,7 +35,7 @@ export default class ProductRules {
         
         // If top colour is multi-word, convert spaces to underscores to match keys in colourOptions
         const formattedTopColour = topColour.toLowerCase().trim().replace(/\s+/g, '_');
-        
+
         // Check if the top colour is valid for the selected product type
         const isTopColourValid = availableOptions.hasOwnProperty(formattedTopColour);
 
@@ -47,15 +47,14 @@ export default class ProductRules {
         } else {
 
             // If colour is not valid return the first available colour for the selected product type
-            const firstAvailableColour = Object.keys(availableOptions)[0] || '';
-
+            const firstAvailableColour = Object.values(availableOptions)[0]?.top?.name || '';
+console.log(firstAvailableColour, 'firstAvailableColour', availableOptions);
             // Update the selected top colour in the DOM
             const topColourInput = document.querySelector(`.obj-top-colour input[type="radio"][value="${firstAvailableColour}"]`);
             
             if (topColourInput) {
                 topColourInput.checked = true;
             }
-
             return firstAvailableColour;
 
         }
@@ -214,6 +213,7 @@ export default class ProductRules {
             return;
         }
 
+        // Add the selected top colour to the selectedOptions object
         this.state.selectedOptions.top = { 
             filename: topFileName,
             swatchName: topColour.value.trim()

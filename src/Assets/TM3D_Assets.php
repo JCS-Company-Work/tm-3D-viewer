@@ -28,6 +28,7 @@
                 'tm-three-viewer',
                 'tm-product-state',
                 'tm-product-rules',
+                'tm-product-ui',
                 'tm-configurator'
             ];
 
@@ -65,6 +66,15 @@
             wp_enqueue_script(
                 'tm-product-state',
                 TM3D_URL . 'assets/js/ProductState.js',
+                [],
+                TM3D_VERSION,
+                true
+            );
+            
+            // Enqueue the ProductUI script, which manages the user interface for the product configuration
+            wp_enqueue_script(
+                'tm-product-ui',
+                TM3D_URL . 'assets/js/ProductUI.js',
                 [],
                 TM3D_VERSION,
                 true
