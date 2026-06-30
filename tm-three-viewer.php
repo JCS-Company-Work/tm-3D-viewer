@@ -24,4 +24,7 @@ if (file_exists(TM3D_PATH . 'vendor/autoload.php')) {
 // Classes required
 use TmThreeViewer\TM3D_Init;
 
-add_action('init', [TM3D_Init::class, 'init']);
+// Only init plugin when shortcode is present on the page
+add_action('init', function () {
+    TM3D_Init::init();
+});

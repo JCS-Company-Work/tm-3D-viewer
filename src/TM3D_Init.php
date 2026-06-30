@@ -14,7 +14,6 @@
             // List of modules to initialize
             $modules = [
                 \TmThreeViewer\Assets\TM3D_Assets::class,
-                \TmThreeViewer\Data\TM3D_Data::class,
                 \TmThreeViewer\Model\TM3D_Model::class,
             ];
 

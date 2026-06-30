@@ -19,7 +19,7 @@
             self::$models = self::getProductModels();
 
             // Retrieve the colour options data from the transient cache based on product type
-            self::$product_data = get_transient('tmpc_colour_options_all');
+            self::$product_data = get_transient('tmpc_colour_options_all') ?: [];
 
             // Check URL for initial product state parameters or determine default values from postmeta
             $initial_state = self::productInitialState();

@@ -24,12 +24,6 @@
 
         {
 
-            // Load models and product data from the database and transient cache
-            self::$data = TM3D_Data::getData();
-            self::$models = self::$data['models'] ?? [];
-            self::$product_data = self::$data['product_data'] ?? [];
-            self::$initial_state = self::$data['initial_state'] ?? [];
-
             // Register the shortcode for the 3D model viewer
             add_shortcode('tm_model_viewer', [self::class, 'render_product_viewer']);
 
@@ -43,6 +37,12 @@
         public static function render_product_viewer()
 
         {
+
+            // Load models and product data from the database and transient cache
+            self::$data = TM3D_Data::getData();
+            self::$models = self::$data['models'] ?? [];
+            self::$product_data = self::$data['product_data'] ?? [];
+            self::$initial_state = self::$data['initial_state'] ?? [];
 
             // Enqueue necessary scripts and styles
             TM3D_Assets::enqueue_assets(self::$data);
