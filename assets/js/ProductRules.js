@@ -235,7 +235,7 @@ export default class ProductRules {
      * @param {HTMLElement} swatchesGroup - DOM element containing the swatches for the current product type.
      */
     setMetalEdgeState(className, swatchesGroup) {
-console.log('Setting metal edge state for class:', className, 'with swatches group:', swatchesGroup);
+
         // If current product includes metals activate the metal edge veneer option in the UI, otherwise deactivate it
         if(className === 'metal-edge-veneer') {
 
@@ -245,6 +245,10 @@ console.log('Setting metal edge state for class:', className, 'with swatches gro
                 metalOption.classList.remove('inactive');
             } else {
                 metalOption.classList.add('inactive');
+
+                // Remove any veneer value from the URL if the metal edge veneer option is deactivated
+                this.removeParamFromURL('veneer');
+
             }
 
         }
@@ -324,6 +328,30 @@ console.log('Setting metal edge state for class:', className, 'with swatches gro
 
         //Return result
         return result;
+    }
+
+    /**
+     * Remove a specific query parameter from the URL without reloading the page.
+     * @param {string} param - The name of the query parameter to remove.
+     */
+    removeParamFromURL = (param) => {
+
+        // Remove a specific query parameter from the URL without reloading the page
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // If the parameter exists, delete it and update the URL
+        if(urlParams.has(param)) {
+
+            // Remove the parameter from the URL
+            urlParams.delete(param);
+            
+            // Update the URL without reloading the page
+            const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+            
+            // Use history.replaceState to update the URL without reloading the page
+            window.history.replaceState({}, '', newUrl);
+
+        }
     }
 
 }

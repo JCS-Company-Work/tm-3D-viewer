@@ -204,13 +204,75 @@ export default class ProductUI {
 
             }
 
-            // Set class based on whether the size is the default model size
-            size.is_default ? option.classList.add('selected') : option.classList.remove('selected');
+            // Set default selection
+            if(size.is_default) {
+                option.selected = true;
+            }
 
             // Append the option to the model select element
             modelSelectEl.appendChild(option);
 
         });
+
+        // Add base model size to url
+        const defaultModelSize = model?.model_sizes?.find(size => size.is_default)?.label || '';
+        this.updateURL({ model: defaultModelSize });
+
+    }
+
+    /**
+     * Updates the URL with the given parameters.
+     * @param {object} params - The parameters to update in the URL.
+     * @returns {void}
+     */
+    updateURL(params = {}) {
+
+        // Mapping of parameter keys to URL query parameter names
+        const map = {
+            'id': 'id',
+            'colour': 'colour',
+            'veneer': 'veneer',
+            'secondcolour': 'base',
+            'model': 'model'
+        };
+
+        // Get current URL object
+        const url = new URL(window.location.href);
+
+        // Loop over params and update URL
+        for (const [key, value] of Object.entries(params)) {
+
+            if (value) {
+
+                // Encode properly with %20
+                const encodedValue = encodeURIComponent(value);
+
+                // Add or update parameter manually
+                url.searchParams.set(map[key], encodedValue);
+
+            } else {
+
+                // Remove parameter if value is empty
+                url.searchParams.delete(map[key]);
+
+            }
+
+        }
+
+        // Manually rebuild query string to prevent + for spaces
+        let queryString = '';
+        url.searchParams.forEach((val, key) => {
+            queryString += `${key}=${val}&`;
+        });
+
+        // remove trailing &
+        queryString = queryString.slice(0, -1); 
+
+        // Build new URL
+        const newUrl = `${url.origin}${url.pathname}${queryString ? '?' + queryString : ''}`;
+
+        // Update browser URL without reload
+        window.history.replaceState({}, '', newUrl);
 
     }
 

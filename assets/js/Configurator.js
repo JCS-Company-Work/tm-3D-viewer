@@ -182,7 +182,7 @@ export default class Configurator {
         };
 
         // Update the URL with the initial state parameters
-        this.updateURL(params);
+        this.ui.updateURL(params);
 
     }
 
@@ -204,65 +204,9 @@ export default class Configurator {
             const label = selectedOption.getAttribute('data-label');
 
             // Update URL with new model size
-            this.updateURL({'model': label});
+            this.ui.updateURL({'model': label});
 
         });
-
-    }
-
-    /**
-     * Updates the URL with the given parameters.
-     * @param {object} params - The parameters to update in the URL.
-     * @returns {void}
-     */
-    updateURL(params = {}) {
-
-        // Mapping of parameter keys to URL query parameter names
-        const map = {
-            'id': 'id',
-            'colour': 'colour',
-            'veneer': 'veneer',
-            'secondcolour': 'base',
-            'model': 'model'
-        };
-
-        // Get current URL object
-        const url = new URL(window.location.href);
-
-        // Loop over params and update URL
-        for (const [key, value] of Object.entries(params)) {
-
-            if (value) {
-
-                // Encode properly with %20
-                const encodedValue = encodeURIComponent(value);
-
-                // Add or update parameter manually
-                url.searchParams.set(map[key], encodedValue);
-
-            } else {
-
-                // Remove parameter if value is empty
-                url.searchParams.delete(map[key]);
-
-            }
-
-        }
-
-        // Manually rebuild query string to prevent + for spaces
-        let queryString = '';
-        url.searchParams.forEach((val, key) => {
-            queryString += `${key}=${val}&`;
-        });
-
-        // remove trailing &
-        queryString = queryString.slice(0, -1); 
-
-        // Build new URL
-        const newUrl = `${url.origin}${url.pathname}${queryString ? '?' + queryString : ''}`;
-
-        // Update browser URL without reload
-        window.history.replaceState({}, '', newUrl);
 
     }
     
