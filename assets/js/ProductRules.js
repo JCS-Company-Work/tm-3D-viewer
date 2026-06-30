@@ -235,7 +235,7 @@ export default class ProductRules {
      * @param {HTMLElement} swatchesGroup - DOM element containing the swatches for the current product type.
      */
     setMetalEdgeState(className, swatchesGroup) {
-
+console.log('Setting metal edge state for class:', className, 'with swatches group:', swatchesGroup);
         // If current product includes metals activate the metal edge veneer option in the UI, otherwise deactivate it
         if(className === 'metal-edge-veneer') {
 

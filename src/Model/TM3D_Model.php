@@ -73,8 +73,8 @@
             return '<script type="importmap">
             {
                 "imports": {
-                    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-                    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+                    "three": "' . TM3D_URL . 'assets/js/three-js/build/three.module.js",
+                    "three/addons/": "' . TM3D_URL . 'assets/js/three-js/examples/jsm/"
                 }
             }
             </script>';
@@ -212,54 +212,56 @@
                             <div class="wapf">
                                 <div class="wapf-wrapper">
                                     <div class="wapf-field-group">
-                                        <div class="obj-product-type wapf-field-container">
-                                            <div class="wapf-field-label"><label><span>Product Type</span></label></div>
-                                            <div class="wapf-field-group">
-                                                <input type="hidden" class="wapf-tf-h" value="0" name="product_type">
+                                        <div id="product-type-container">
+                                            <div class="obj-product-type wapf-field-container">
+                                                <div class="wapf-field-label"><label><span>Product Type</span></label></div>
+                                                <div class="wapf-field-group">
+                                                    <input type="hidden" class="wapf-tf-h" value="0" name="product_type">
 
-                                                <div class="collection-filters">
-                                                    <?php foreach (array_keys(self::$models) as $index => $collection_name) : ?>
-                                                        <button
-                                                            type="button"
-                                                            class="collection-filter <?php echo $index === 0 ? 'active' : ''; ?>"
-                                                            data-collection="<?php echo esc_attr(sanitize_title($collection_name)); ?>"
-                                                        >
-                                                            <?php echo esc_html($collection_name); ?>
-                                                        </button>
-                                                    <?php endforeach; ?>
-                                                </div>
-
-                                                <?php foreach(self::$models as $key => $collection) : ?>
-
-                                                    <div class="collection-wrapper" data-collection="<?php echo esc_attr(sanitize_title($key)); ?>">
-                                                    
-                                                        <?php foreach($collection as $model) : ?>
-
-                                                            <div class="wapf-swatch wapf-swatch--image apf-pick-box">
-                                                                <label aria-label="<?php echo $model['title']; ?>">
-                                                                    <input 
-                                                                        id="<?php echo esc_attr($model['id']); ?>"
-                                                                        type="radio" 
-                                                                        name="product_type" 
-                                                                        class="wapf-input"
-                                                                        value="<?php echo esc_attr($model['title']); ?>" 
-                                                                        <?php echo ((int) self::$initial_state['id'] === $model['id']) ? 'checked' : ''; 
-                                                                        ?>
-                                                                        data-sku="<?php echo esc_attr($model['sku']); ?>"
-                                                                        data-product-type="<?php echo esc_attr($model['product_type']); ?>"
-                                                                    >
-                                                                    <div>
-                                                                        <img class="swatch" src="<?php echo $model['url']; ?>" alt="<?php echo $model['title']; ?>"/>
-                                                                    </div>
-                                                                    <div class="wapf-swatch-label"><?php echo $model['title']; ?></div>
-                                                                </label>
-                                                            </div>
-                                                            
+                                                    <div class="collection-filters">
+                                                        <?php foreach (array_keys(self::$models) as $index => $collection_name) : ?>
+                                                            <button
+                                                                type="button"
+                                                                class="collection-filter <?php echo $index === 0 ? 'active' : ''; ?>"
+                                                                data-collection="<?php echo esc_attr(sanitize_title($collection_name)); ?>"
+                                                            >
+                                                                <?php echo esc_html($collection_name); ?>
+                                                            </button>
                                                         <?php endforeach; ?>
-                                                    
                                                     </div>
 
-                                                <?php endforeach; ?>
+                                                    <?php foreach(self::$models as $key => $collection) : ?>
+
+                                                        <div class="collection-wrapper" data-collection="<?php echo esc_attr(sanitize_title($key)); ?>">
+                                                        
+                                                            <?php foreach($collection as $model) : ?>
+
+                                                                <div class="wapf-swatch wapf-swatch--image apf-pick-box">
+                                                                    <label aria-label="<?php echo $model['title']; ?>">
+                                                                        <input 
+                                                                            id="<?php echo esc_attr($model['id']); ?>"
+                                                                            type="radio" 
+                                                                            name="product_type" 
+                                                                            class="wapf-input"
+                                                                            value="<?php echo esc_attr($model['title']); ?>" 
+                                                                            <?php echo ((int) self::$initial_state['id'] === $model['id']) ? 'checked' : ''; 
+                                                                            ?>
+                                                                            data-sku="<?php echo esc_attr($model['sku']); ?>"
+                                                                            data-product-type="<?php echo esc_attr($model['product_type']); ?>"
+                                                                        >
+                                                                        <div>
+                                                                            <img class="swatch" src="<?php echo $model['url']; ?>" alt="<?php echo $model['title']; ?>"/>
+                                                                        </div>
+                                                                        <div class="wapf-swatch-label"><?php echo $model['title']; ?></div>
+                                                                    </label>
+                                                                </div>
+                                                                
+                                                            <?php endforeach; ?>
+                                                        
+                                                        </div>
+
+                                                    <?php endforeach; ?>
+                                                </div>
                                             </div>
                                         </div>
                                         <div id="top-container">

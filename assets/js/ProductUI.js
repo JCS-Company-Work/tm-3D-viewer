@@ -197,7 +197,7 @@ export default class ProductUI {
                 
                 // Add a class for styling the price label
                 span.classList.add('price-label');
-                span.textContent = ` (+ £${priceInclVat.toFixed(2)})`;
+                span.textContent = ` (+£${priceInclVat.toFixed(2)})`;
                 
                 // Append the span to the option element
                 option.appendChild(span);

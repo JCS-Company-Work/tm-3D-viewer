@@ -262,11 +262,6 @@ export default class ProductViewer {
                 let cleanedValue = value.replace(/(swatch-|banding-)/gi, '').trim();
 
                 if (cleanedValue) {
-                    // Capitalize first letter of each word
-                    cleanedValue = cleanedValue
-                        .split(/[\s-]+/) // split by spaces or hyphens
-                        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                        .join(' ');
 
                     // Encode properly with %20
                     const encodedValue = encodeURIComponent(cleanedValue);
