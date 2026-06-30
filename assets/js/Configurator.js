@@ -24,6 +24,7 @@ export default class Configurator {
     init() {
         this.ui.setConfigDrawerState();
         this.addSwatchListeners();
+        this.addCollectionFilterListeners();
         this.updateModel();
         this.syncInitialURLState();
         this.viewer.init();
@@ -66,10 +67,11 @@ export default class Configurator {
             // Handle the selection based on the group type
             if (group.matches('.obj-product-type')) {
 
+                // Rebuild the UI for the new product type
+                this.ui.buildUI(input.id, input.getAttribute('data-product-type'), input.closest('.collection-wrapper').getAttribute('data-collection'));
+
                 // Reset the top colour selection for the new product type
                 const topColour = this.rules.resetForProductType();
-                
-                this.ui.buildUI(input.getAttribute('data-product-type'));
                 
                 // Update the available colour options based on the selected top colour
                 this.rules.setColourOptions(topColour);
@@ -88,8 +90,10 @@ export default class Configurator {
             // Top Colour
             if (group.matches('.obj-top-colour')) {
 
+                // Update the colour options for the top colour
                 this.rules.setColourOptions(swatchName);
 
+                // Update the viewer with the selected top colour
                 this.viewer.updateColourOptions(this.state.selectedOptions);
 
                 return;
@@ -98,12 +102,66 @@ export default class Configurator {
             // Base / Metal
             if (group.matches('.obj-base') || group.matches('.obj-metal-edge-veneer')) {
 
+                // Update the selected options for base or metal
                 this.rules.setSelectedOptions();
 
+                // Update the viewer with the selected options
                 this.viewer.updateColourOptions(this.state.selectedOptions);
+
             }
 
         });
+    }
+
+    /**
+     * Add click listeners to collection filter buttons to 
+     * show/hide swatches based on the selected collection.
+     * @returns {void}  
+     */
+    addCollectionFilterListeners = () => {
+
+        // Get the wrapper for the swatch groups
+        const groupWrapper = document.querySelector('.wapf-field-group');
+
+        // If the wrapper doesn't exist, exit early
+        if (!groupWrapper) {
+            return;
+        }
+
+        // Listen for clicks on the collection filter buttons
+        groupWrapper.addEventListener('click', (e) => {
+
+            // Find the closest collection filter button that was clicked
+            const button = e.target.closest('.collection-filter');
+
+            // If no button is found, exit early
+            if (!button) {
+                return;
+            }
+
+            // Show the products for the selected collection
+            this.showCollection(button.dataset.collection);
+
+        });
+
+    }
+
+    /**
+     * Show the products in the selected collection and hide others.
+     * @param {string} collection - The collection to show.
+     */
+    showCollection = (collection) => {
+
+        const groupWrapper = document.querySelector('.wapf-field-group');
+
+        groupWrapper.querySelectorAll('.collection-filter').forEach(button => {
+            button.classList.toggle('active', button.dataset.collection === collection);
+        });
+
+        groupWrapper.querySelectorAll('.collection-wrapper').forEach(wrapper => {
+            wrapper.classList.toggle('active', wrapper.dataset.collection === collection);
+        });
+
     }
 
     /**
@@ -114,10 +172,11 @@ export default class Configurator {
         // Get initial state from window.TM3DPlugin.data
         const initialState = window.TM3DPlugin?.data?.initial_state || {};
 
+        // Prepare parameters for URL update
         const params = {
             id: initialState?.id || '',
             colour: initialState?.top || '',
-            metalcolour: initialState?.metal || '',
+            veneer: initialState?.veneer || '',
             secondcolour: initialState?.base || '',
             model: initialState?.default_model_size || ''
         };
@@ -162,7 +221,7 @@ export default class Configurator {
         const map = {
             'id': 'id',
             'colour': 'colour',
-            'metalcolour': 'veneer',
+            'veneer': 'veneer',
             'secondcolour': 'base',
             'model': 'model'
         };

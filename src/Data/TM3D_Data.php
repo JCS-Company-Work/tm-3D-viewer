@@ -92,8 +92,6 @@
                 // If no base is uspplied, default to first valid base as we have a top colour and a product type
                 if (!self::isValidOption($product_type, 'base', $params)) {
                     $params['base'] = self::$product_data[$product_type]['colour_options'][$hyphenated_colour]['base'][0] ?? '';
-                    error_log("Defaulting base to: " . $params['base']);
-                    error_log(print_r(self::$product_data[$product_type]['colour_options'][$hyphenated_colour]['base'][0], true));
                 }
 
                 // If this is an edge product check for metal
@@ -111,15 +109,24 @@
 
                 // The frontend expects "top" instead of "colour"
                 if (isset($final_values['colour'])) {
-                    $final_values['top'] = $final_values['colour'];
+                    $final_values['top'] = strtolower($final_values['colour']);
                     unset($final_values['colour']);
                 }
 
+                // Retrieve the model by ID to get additional information like SKU and model sizes
+                $model = self::get_model_by_id((int) ($final_values['id'] ?? null));
+
                 // Add product type, sku, model sizes, and default model size to the final values
                 $final_values['product_type'] = $product_type;
-                $final_values['sku'] = self::$models[$params['id']]['sku'] ?? '';
-                $final_values['model_sizes'] = self::$models[$params['id']]['model_sizes'] ?? [];
-                $final_values['default_model_size'] = '';
+                $final_values['sku'] = $model['sku'] ?? '';
+                $final_values['model_sizes'] = $model['model_sizes'] ?? [];
+
+                foreach ($final_values['model_sizes'] ?? [] as $size) {
+                    if (!empty($size['is_default'])) {
+                        $final_values['default_model_size'] = $size['label'] ?? '';
+                        break;
+                    }
+                }
 
                 return $final_values;
 
@@ -127,6 +134,30 @@
                 return self::return_defaults();
             }
 
+        }
+
+        /**
+         * Retrieve a model by its ID
+         *
+         * @param int $id The ID of the model to retrieve
+         * @return array|null Returns the model array if found, null otherwise
+         */
+        public static function get_model_by_id($id) {
+
+            // Find model by id
+            $model = null;
+
+            foreach (self::$models as $collection) {
+                foreach ($collection as $product) {
+                    error_log('Checking product ID: ' . gettype($product['id']) . ' against param ID: ' . gettype($id)); // Log the IDs being compared
+                    if ($product['id'] === $id) {
+                        $model = $product;
+                        break 2;
+                    }
+                }
+            }
+
+            return $model;
         }
 
         /**
@@ -193,9 +224,12 @@
          */
         public static function return_defaults() {
 
-            // Get first model from the models array
-            $first_model = self::$models[array_key_first(self::$models)];
+            // Product collection
+            $collection = array_key_first(self::$models) ?? '';
 
+            // Get first model from the models array
+            $first_model = reset(self::$models[$collection]) ?? [];
+error_log('test : ' . print_r($first_model, true)); // Log the first model for debugging
             // Check if default colour options exist for the first model
             if (empty($first_model['default_colour_options'])) {
                 return [];
@@ -237,7 +271,7 @@
                     break;
                 }
             }
-
+error_log('combined_arr : ' . print_r($combined_arr, true)); // Log the combined array for debugging
             // Return the combined array of default values
             return $combined_arr;
 
@@ -279,37 +313,52 @@
             // Execute the query
             $query = new \WP_Query($args);
 
-            // Initialize an array to hold the field values
-            $field_values = [];
+            // array to hold products by collection
+            $products_by_collection = [];
 
             // Loop through the posts and get the required field values
             if ( $query->have_posts() ) :
 
                 while ( $query->have_posts() ) : $query->the_post();
 
+                    // Initialize an array to hold the field values
+                    $field_values = [];
+
                     // Get the ID
                     $id = get_the_ID();
 
-                    // Get the ID
-                    $field_values[$id]['id'] = $id;
+                    $collection = self::determineProductCollection($id);
 
-                    // Get the product type
-                    $field_values[$id]['product_type'] = self::get_product_type($id);
+                    // Add the product to the collection array if collection not null, otherwise skip it
+                    if ($collection) {
 
-                    // Get the title
-                    $field_values[$id]['title'] = get_the_title();
+                        // Get the ID
+                        $field_values[$id]['id'] = $id;
 
-                    // Get the sku
-                    $field_values[$id]['sku'] = get_field('acf_3d_model_name');
+                        // Get the product type
+                        $field_values[$id]['product_type'] = self::get_product_type($id);
 
-                    // Get model sizes
-                    $field_values[$id]['model_sizes'] = get_post_meta($id, '_tmpa_model_size', true);
+                        // Get the title
+                        $field_values[$id]['title'] = get_the_title();
 
-                    // Get default colour options
-                    $colour_option_keys = ['_tmpa_top_colour', '_tmpa_base_colour', '_tmpa_metal_colour'];
+                        // Get product thumbnail URL
+                        $field_values[$id]['url'] = get_the_post_thumbnail_url($id, 'thumbnail');
 
-                    foreach ($colour_option_keys as $key) {
-                        $field_values[$id]['default_colour_options'][$key] = get_post_meta($id, $key, true);
+                        // Get the sku
+                        $field_values[$id]['sku'] = get_field('acf_3d_model_name');
+
+                        // Get model sizes
+                        $field_values[$id]['model_sizes'] = get_post_meta($id, '_tmpa_model_size', true);
+
+                        // Get default colour options
+                        $colour_option_keys = ['_tmpa_top_colour', '_tmpa_base_colour', '_tmpa_metal_colour'];
+
+                        foreach ($colour_option_keys as $key) {
+                            $field_values[$id]['default_colour_options'][$key] = get_post_meta($id, $key, true);
+                        }
+
+                        $products_by_collection[$collection][$id] = $field_values[$id];
+
                     }
 
                 endwhile;
@@ -319,8 +368,30 @@
             endif;
 
             // Return the array of field values
-            return $field_values;
+            return $products_by_collection;
 
+        }
+
+        /**
+         * Determine the main product collection based on the product's categories
+         *
+         * @param string $id
+         * @return string|null Returns the slug of the main collection or null if no match
+         */
+        public static function determineProductCollection($id) {
+
+            // Determine product main collection and add it to the array
+            $terms = get_the_terms($id, 'product_cat');
+
+            if (!empty($terms) && !is_wp_error($terms)) {
+                foreach ($terms as $term) {
+                    if (in_array($term->slug, ['vanguard', 'phantom', 'monarch', 'luna'])) {
+                        return $term->slug;
+                    }
+                }
+            }
+
+            return null;
         }
 
     }

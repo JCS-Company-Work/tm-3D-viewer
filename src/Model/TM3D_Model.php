@@ -123,17 +123,16 @@
          */
         public static function render_drawers(): string {
 
-            // Extract first model to populate filters and options with default values
-            //$first_model = self::$models[array_key_first(self::$models)] ?? [];
-
+            // Guard against empty models array
             if (empty(self::$models)) {
                 return '<div class="configurator-error">No models found</div>';
             }
 
             $first_id = self::$initial_state['id'] ?? array_key_first(self::$models);
-            $product  = wc_get_product(self::$models[$first_id]['id']);
+            $product  = wc_get_product($first_id);
 
-            if (!$product) {
+            // Guard against invalid product
+            if (!$product || !is_object($product) || !method_exists($product, 'get_id')) {
                 return '<div class="configurator-error">Invalid product</div>';
             }
 
@@ -197,8 +196,8 @@
                                         <i class="fa-regular fa-circle-4"></i><span>Base Finish</span> Select base
                                     </div>      
                                 </li>
-                                <li class="config-option-metal-edge-veneer">
-                                    <div class="config-option-button" id="option-metal-edge-veneer">
+                                <li class="config-option-metal-edge-veneer" style="display: block;">
+                                    <div class="config-option-button <?php echo (self::$initial_state['veneer']) ? '' : 'inactive'; ?>" id="option-metal-edge-veneer">
                                         <i class="fa-regular fa-circle-5"></i><span>Metal Edge</span> Select edge
                                     </div>
                                 </li>
@@ -216,31 +215,51 @@
                                         <div class="obj-product-type wapf-field-container">
                                             <div class="wapf-field-label"><label><span>Product Type</span></label></div>
                                             <div class="wapf-field-group">
-                                                <div class="wapf-image-swatch-wrapper">
                                                 <input type="hidden" class="wapf-tf-h" value="0" name="product_type">
-                                                    <?php foreach(self::$models as $model) : ?>
-                                                        <div class="wapf-swatch wapf-swatch--image apf-pick-box">
-                                                            <label aria-label="<?php echo $model['title']; ?>">
-                                                                <input 
-                                                                    id="<?php echo esc_attr($model['id']); ?>"
-                                                                    type="radio" 
-                                                                    name="product_type" 
-                                                                    class="wapf-input"
-                                                                    value="<?php echo esc_attr($model['title']); ?>" 
-                                                                    <?php echo (self::$initial_state['id'] === $model['id']) ? 'checked' : ''; 
-                                                                    ?>
-                                                                    data-sku="<?php echo esc_attr($model['sku']); ?>"
-                                                                    data-product-type="<?php echo esc_attr($model['product_type']); ?>"
-                                                                >
-                                                                <div>
-                                                                    <img class="swatch" src="<?php echo $model['url']; ?>" alt="<?php echo $model['title']; ?>"/>
-                                                                </div>
-                                                                <div class="wapf-swatch-label"><?php echo $model['title']; ?></div>
-                                                            </label>
-                                                        </div>
-                                                        
+
+                                                <div class="collection-filters">
+                                                    <?php foreach (array_keys(self::$models) as $index => $collection_name) : ?>
+                                                        <button
+                                                            type="button"
+                                                            class="collection-filter <?php echo $index === 0 ? 'active' : ''; ?>"
+                                                            data-collection="<?php echo esc_attr(sanitize_title($collection_name)); ?>"
+                                                        >
+                                                            <?php echo esc_html($collection_name); ?>
+                                                        </button>
                                                     <?php endforeach; ?>
                                                 </div>
+
+                                                <?php foreach(self::$models as $key => $collection) : ?>
+
+                                                    <div class="collection-wrapper" data-collection="<?php echo esc_attr(sanitize_title($key)); ?>">
+                                                    
+                                                        <?php foreach($collection as $model) : ?>
+
+                                                            <div class="wapf-swatch wapf-swatch--image apf-pick-box">
+                                                                <label aria-label="<?php echo $model['title']; ?>">
+                                                                    <input 
+                                                                        id="<?php echo esc_attr($model['id']); ?>"
+                                                                        type="radio" 
+                                                                        name="product_type" 
+                                                                        class="wapf-input"
+                                                                        value="<?php echo esc_attr($model['title']); ?>" 
+                                                                        <?php echo ((int) self::$initial_state['id'] === $model['id']) ? 'checked' : ''; 
+                                                                        ?>
+                                                                        data-sku="<?php echo esc_attr($model['sku']); ?>"
+                                                                        data-product-type="<?php echo esc_attr($model['product_type']); ?>"
+                                                                    >
+                                                                    <div>
+                                                                        <img class="swatch" src="<?php echo $model['url']; ?>" alt="<?php echo $model['title']; ?>"/>
+                                                                    </div>
+                                                                    <div class="wapf-swatch-label"><?php echo $model['title']; ?></div>
+                                                                </label>
+                                                            </div>
+                                                            
+                                                        <?php endforeach; ?>
+                                                    
+                                                    </div>
+
+                                                <?php endforeach; ?>
                                             </div>
                                         </div>
                                         <div id="top-container">
@@ -257,7 +276,7 @@
                                                                         name="top_colour" 
                                                                         class="wapf-input"
                                                                         value="<?php echo esc_attr($colour_option['top']['name']); ?>" 
-                                                                        <?php echo (self::$initial_state['top'] === $colour_option['top']['name']) ? 'checked' : ''; 
+                                                                        <?php echo (strtolower(self::$initial_state['top']) === strtolower($colour_option['top']['name'])) ? 'checked' : ''; 
                                                                         ?>
                                                                         data-sample-id="<?php echo esc_attr($colour_option['top']['sample_id']); ?>"
                                                                     >
@@ -309,7 +328,7 @@
                                             </div>
                                         </div> 
                                         <div id="metal-container">   
-                                            <?php if(self::$initial_state['metal']) : ?>
+                                            <?php if(self::$initial_state['veneer']) : ?>
                                                 <div class="obj-metal-edge-veneer wapf-field-container wapf-field-image-swatch field-6a9c491 wapf-required" style="width:100%;" for="6a9c491">
                                                     <div class="wapf-field-label">
                                                         <label><span>Metal Edge Veneer</span> <abbr class="required" title="required">*</abbr></label>
@@ -320,7 +339,7 @@
 
                                                                 <?php foreach(self::$product_data['master_values'][$product_type]['metal'] as $metal) : ?>
                                 
-                                                                    <div class="wapf-swatch wapf-swatch--image wapf-single-select apf-pick-box" style="<?php echo (in_array($metal['slug'], $metals_for_current_top)) ? 'display: inline;' : 'display: none;'; ?>">
+                                                                    <div class="wapf-swatch wapf-swatch--image wapf-single-select apf-pick-box" style="<?php echo (in_array($metal['name'], $metals_for_current_top)) ? 'display: inline;' : 'display: none;'; ?>">
                                                                         <label aria-label="<?php echo esc_attr($metal['name']); ?>">
                                                                             <input
                                                                                 type="radio"
@@ -328,7 +347,7 @@
                                                                                 class="wapf-input"
                                                                                 id="<?php echo esc_attr($metal['sample_id'] ?? ''); ?>"
                                                                                 value="<?php echo esc_attr($metal['name']); ?>"
-                                                                                <?php echo (self::$initial_state['metal'] === $metal['name']) ? 'checked' : ''; ?>
+                                                                                <?php echo (self::$initial_state['veneer'] === $metal['name']) ? 'checked' : ''; ?>
                                                                             >
                                                                             <div>
                                                                                 <img class="swatch" src="<?php echo esc_url($metal['url'] ?? ''); ?>" alt="<?php echo esc_attr($metal['name']); ?>" />

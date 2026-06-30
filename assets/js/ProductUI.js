@@ -7,7 +7,7 @@ export default class ProductUI {
 
     }
 
-        /**
+    /**
      * Sets up event listeners for the configuration drawer, 
      * allowing it to open and close based on user interactions.
      * @returns {void}
@@ -44,9 +44,11 @@ export default class ProductUI {
 
     /**
      * Rebuild UI after product model change to correctly reflect available options for the selected product type.
-     * @param {string} productType 
+     * @param {string} id - The ID of the selected product type.
+     * @param {string} productType - The type of the selected product.
+     * @param {string} collection - The collection to which the product belongs.
      */
-    buildUI(productType) {
+    buildUI(id, productType, collection) {
 
         // Groups to iterate over for building swatches
         const groups = {
@@ -56,7 +58,7 @@ export default class ProductUI {
 			metal: 'metal-edge-veneer'
 
         }
-console.table(this.state);
+
         Object.entries(groups).forEach(([key, group]) => {
             
             // Get the currently selected option for the group
@@ -121,6 +123,9 @@ console.table(this.state);
                 
         });
 
+        // Update models for the selected product type
+        this.updateModels(id, collection);
+
     }
 
     /**
@@ -144,6 +149,68 @@ console.table(this.state);
             return this.state.colourOptions.master_values[productType]?.metal || {}
 
         };
+
+    }
+
+    /**
+     * Update the model select element with available models for the selected product type and collection.
+     * @param {string} id 
+     * @param {string} collection 
+     * @returns {void}
+     */
+    updateModels(id, collection) {
+
+        // Get the model data for the selected product type and collection
+        const model = window.TM3DPlugin?.data?.models?.[collection]?.[id] || {};
+         
+        const modelSelectEl = document.querySelector('.obj-model select');
+
+        if (!modelSelectEl) {
+            console.warn('Model select element not found.');
+            return;
+        }
+
+        // Clear existing options
+        modelSelectEl.innerHTML = '';
+
+        // Populate the model select element with new options
+        model?.model_sizes?.forEach(size => {
+
+            // Calculate price including VAT
+            const priceInclVat = size.price * 1.2;
+
+            // Create a new option element for the model size
+            const option = document.createElement('option');
+
+            // Set the option's value, text content, and data attributes
+            option.value = size.label;
+            option.textContent = size.label;
+            option.dataset.label = size.label;
+            option.dataset.wapfPrice = priceInclVat;
+            option.dataset.exVat = size.price;
+
+            // If the size has a price greater than 0, append a span element to display the price
+            if(size.price > 0) {
+
+                // Create a span element to display the price including VAT
+                const span = document.createElement('span');
+                
+                // Add a class for styling the price label
+                span.classList.add('price-label');
+                span.textContent = ` (+ £${priceInclVat.toFixed(2)})`;
+                
+                // Append the span to the option element
+                option.appendChild(span);
+
+            }
+
+            // Set class based on whether the size is the default model size
+            size.is_default ? option.classList.add('selected') : option.classList.remove('selected');
+
+            // Append the option to the model select element
+            modelSelectEl.appendChild(option);
+
+        });
 
     }
 

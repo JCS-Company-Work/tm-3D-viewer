@@ -17,8 +17,7 @@ export default class ProductRules {
     // ===================== Option Logic & State Management ===================== //
 
     /**
-     * Reset the selected options for the product based on the currently selected product type and top colour.
-     * This function is used to determine the default selections for base and edge groups based on 
+     * Determine the default selections for base and edge groups based on 
      * the selected product type and top colour, and to update the available options in the UI accordingly.
      * @returns {string} The top colour to be used for the selected product type.
      */
@@ -32,7 +31,7 @@ export default class ProductRules {
 
         // Get available options for the selected product type and top colour
         const availableOptions = this.state.colourOptions?.[productType]?.colour_options || {};
-        
+        console.log('Available options for product type', productType, ':', availableOptions);
         // If top colour is multi-word, convert spaces to underscores to match keys in colourOptions
         const formattedTopColour = topColour.toLowerCase().trim().replace(/\s+/g, '_');
 
@@ -46,16 +45,28 @@ export default class ProductRules {
             
         } else {
 
-            // If colour is not valid return the first available colour for the selected product type
-            const firstAvailableColour = Object.values(availableOptions)[0]?.top?.name || '';
-console.log(firstAvailableColour, 'firstAvailableColour', availableOptions);
-            // Update the selected top colour in the DOM
-            const topColourInput = document.querySelector(`.obj-top-colour input[type="radio"][value="${firstAvailableColour}"]`);
-            
+            // Extract the first available top colour for the selected product type
+            const firstAvailableColour =
+                Object.values(availableOptions)[0]?.top?.name || '';
+
+            // Find all inputs in this group
+            const topColourInputs = document.querySelectorAll(
+                '.obj-top-colour input[type="radio"]'
+            );
+
+            // Try to find a match
+            const topColourInput = Array.from(topColourInputs)
+                .find(input => input.value === firstAvailableColour);
+
+            // If a match is found, check it and return the first available colour
             if (topColourInput) {
                 topColourInput.checked = true;
+                return firstAvailableColour;
             }
-            return firstAvailableColour;
+
+            // If no match is found, log a warning and return an empty string
+            console.warn(`No matching input found for top colour "${firstAvailableColour}".`);
+            return '';
 
         }
     }
@@ -90,6 +101,7 @@ console.log(firstAvailableColour, 'firstAvailableColour', availableOptions);
      * @returns {Object} An object containing available options for the selected top colour.
      */
     getAvailableOptions(topColour) {
+
          // If top colour is multi-word, convert spaces to underscores to match keys in colourOptions
         const formattedTopColour = topColour.toLowerCase().trim().replace(/\s+/g, '_');
 
@@ -98,6 +110,7 @@ console.log(firstAvailableColour, 'firstAvailableColour', availableOptions);
 
         // Return available options for the selected top colour and product type, or an empty object if not found
         return this.state.colourOptions?.[productType]?.colour_options?.[formattedTopColour] || {};
+
     }
 
     /**
@@ -113,25 +126,23 @@ console.log(firstAvailableColour, 'firstAvailableColour', availableOptions);
             // Find swatches in DOM
             const swatchesGroup = document.querySelector(`.wapf-field-group .obj-${className}`);
 
+            // Activate/deaviate metals UI group based on whether product has metals
+            this.setMetalEdgeState(className, swatchesGroup);
+
             // If no swatches found for this group, skip to next iteration
-            if(!swatchesGroup) {
-                return;
-            }
+            if(!swatchesGroup) return;
 
             // If there are swatches find the currently checked option for this group
             const checkedSwatch = swatchesGroup.querySelector('input[type="radio"]:checked')?.closest('.wapf-swatch');
 
-            // If no checked swatch exists yet, skip safely.
-            if (!checkedSwatch) {
-                return;
-            }
+            // If no checked swatch is found, skip to next iteration
+            if (!checkedSwatch) return;
 
             // If there is a checked option, extract the value and check if it's available for the selected top colour
             const input = checkedSwatch.querySelector('input');
 
-            if (!input) {
-                return;
-            }
+            // If no input is found, skip to next iteration
+            if (!input) return;
 
             // Extract the value of the checked option and format it for comparison
             const value = input.value.toLowerCase().trim();
@@ -143,8 +154,10 @@ console.log(firstAvailableColour, 'firstAvailableColour', availableOptions);
             const topColour = document.querySelector('.obj-top-colour input[type="radio"]:checked')?.value || '';
             const formattedTopColour = topColour.toLowerCase().trim().replace(/\s+/g, '_');
 
-            const availableList = this.state.colourOptions?.[productType]?.colour_options?.[formattedTopColour]?.[className] ?? [];
+            // Get the list of available options for the selected top colour and product type
+            const availableList = this.state.colourOptions?.[productType]?.colour_options?.[formattedTopColour]?.[key] ?? [];
 
+            // If there are no available options for this group, skip to next iteration
             if (availableList.length === 0) {
                 return;
             }
@@ -156,6 +169,7 @@ console.log(firstAvailableColour, 'firstAvailableColour', availableOptions);
             let selectedOption;
             
             if(!isAvailable) {
+
                 // If the current option is not available for the top colour, find the first available option and set selectedOption to that
                 selectedOption = this.getFirstAvailableOption(swatchesGroup, availableList);
 
@@ -194,30 +208,46 @@ console.log(firstAvailableColour, 'firstAvailableColour', availableOptions);
                 swatchName: selectedLabel
             };
 
-            console.log(`Selected option for ${key}:`, this.state.selectedOptions);
-
         });
 
         // Also include the selected top colour as part of the defaults sent in the custom event
         const topColour = document.querySelector('.obj-top-colour input[type="radio"]:checked');
 
-        if (!topColour) {
-            return;
-        }
+        if (!topColour) return;
 
         // Extract the image file name from the selected top colour swatch to use as the default option value
         const topSwatchImage = topColour.parentElement?.querySelector('.swatch');
         const topFileName = this.getImageFileName(topSwatchImage);
 
-        if (!topFileName) {
-            return;
-        }
+        if (!topFileName) return;
 
         // Add the selected top colour to the selectedOptions object
         this.state.selectedOptions.top = { 
             filename: topFileName,
             swatchName: topColour.value.trim()
         };
+
+    }
+
+    /**
+     * Set the state of the metal edge veneer option in the UI based on whether the current product type includes metals.
+     * @param {string} className - The CSS class name of the option group (e.g., 'metal-edge-veneer').
+     * @param {HTMLElement} swatchesGroup - DOM element containing the swatches for the current product type.
+     */
+    setMetalEdgeState(className, swatchesGroup) {
+
+        // If current product includes metals activate the metal edge veneer option in the UI, otherwise deactivate it
+        if(className === 'metal-edge-veneer') {
+
+            const metalOption = document.getElementById('option-metal-edge-veneer');
+
+            if(swatchesGroup && swatchesGroup.querySelectorAll('.wapf-swatch').length > 0) {
+                metalOption.classList.remove('inactive');
+            } else {
+                metalOption.classList.add('inactive');
+            }
+
+        }
 
     }
 
