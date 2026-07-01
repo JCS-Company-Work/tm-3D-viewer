@@ -18,10 +18,21 @@
             // Get all models and their associated SKU values from the database
             self::$models = self::getProductModels();
 
-            // Retrieve the colour options data from the transient cache based on product type
-            self::$product_data = get_transient('tmpc_colour_options_all') ?: [];
+            // Retrieve transient safely (NEVER trust WP return types)
+            $cached = get_transient('tmpc_colour_options_all');
 
-            // Check URL for initial product state parameters or determine default values from postmeta
+            self::$product_data = is_array($cached) ? $cached : [];
+
+            // If empty, trigger rebuild and re-check once
+            if (empty(self::$product_data)) {
+
+                do_action('tmc_rebuild_colour_options');
+
+                $cached = get_transient('tmpc_colour_options_all');
+                self::$product_data = is_array($cached) ? $cached : [];
+            }
+
+            // Check URL for initial product state parameters or defaults
             $initial_state = self::productInitialState();
 
             return [
@@ -29,7 +40,6 @@
                 'product_data' => self::$product_data,
                 'initial_state' => $initial_state,
             ];
-
         }
 
         /**

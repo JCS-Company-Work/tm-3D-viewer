@@ -15,84 +15,163 @@ export default class ProductViewer {
             console.error(`[ProductRenders] Container not found for selector: ${containerSelector}`);
         }
 
-        // Object to hold preloaded textures for materials
-        this.queryString = '';
-        
-        // Track if camera animation has already run
-        this.cameraAnimated = false;
+        // Initialise 3d model state object
+        this.modelState = {
+            adjustment: '',
+            textureName: 'default-model',
+            queryString: '',
+            cameraAnimated: false,
+            shadowName: 'shadow-tt04.jpg'
+        };
+
+        // Viewer state for scene and loaded model
+        this.viewer = {
+            scene: null,
+            loadedModel: null
+        };
+
+        // Runtime state for animation and interaction
+        this.runtime = {
+            isAnimating: false
+        };
+
+        // Default settings for the viewer
+        this.defaults = {};
 
         // Adjust camera settings based on screen size
-        if (window.innerWidth < 768) {
-            this.adjustment = 50;
-        } else {
-            this.adjustment = 40;
-        }
+        this.setAdjustment();
 
         // Determine texture name from container attribute
-        this.textureName = this.container ? this.container.getAttribute('item-name') : '';
-        if (!this.textureName) {
-            console.error('[ProductRenders] textureName is missing or empty. Check that the container has the item-name attribute.');
-            this.textureName = 'default-model'; // fallback
-        }
+        this.setTextureName();
 
-        // Assign shadow image and camera adjustment based on model type
-        if (this.textureName.includes('tt02')) {
-            this.shadowName = "shadow-tt02.jpg";
-            this.adjustment = (window.innerWidth < 768) ? 35 : 29;
-        } else if (this.textureName.includes('tt03')) {
-            this.shadowName = "shadow-tt03.jpg";
-        } else if (this.textureName.includes('tt12')) {
-            this.shadowName = "shadow-tt12.jpg";
-        } else {
-            this.shadowName = "shadow-tt04.jpg";
-        }
-
-        // Core 3D properties
-        this.loadedModel = null;
-        this.scene = null;
-        this.defaults = {};
-        this.isAnimating = false;
-
-        // Fullscreen toggle button
-        this.toggleButton = document.querySelector('.obj3dviewer-toggle');
-
-        // Bind event handler methods to maintain correct `this` context
-        this.toggleHandler = this.toggleFullscreen.bind(this);
-        this.fullscreenChangeHandler = this.onFullscreenChange.bind(this);
+        // Set shadow image based on model type
+        this.setShadow();
+        
+        // Initialize 3D scene, camera, renderer, lights, controls, and ground
+        this.initViewer();
 
         // Initialize event listeners (fullscreen, toggle button)
-        this.initEventListeners();
+        this.addEventListeners();
+
         
+    }
+
+    // ===================== Model Functions ===================== //
+
+    /**
+     * Sets the texture name in state for the 3D model based on the container's item-name attribute.
+     */
+    setTextureName() {
+
+        const textureName = this.container?.getAttribute('item-name');
+
+        if (textureName) {
+            this.modelState.textureName = textureName;
+        } else {
+            console.error(
+                '[ProductRenders] textureName is missing or empty. Check that the container has the item-name attribute.'
+            );
+        }
+
     }
 
     /**
-     * Keep the URL in sync with current page selections before deferred 3D init.
+     * Sets the shadow image name in state based on the model type and adjusts camera settings for specific models.
      */
-    syncInitialURLState() {
-        const modelSelect = document.querySelector('.obj-model select');
-        const selectedOption = modelSelect?.options?.[modelSelect.selectedIndex];
+    setShadow() {
 
-        const params = {
-            colour: this.getSelectedSwatchName('.obj-top-colour'),
-            metalcolour: this.getSelectedSwatchName('.obj-metal-edge-veneer'),
-            secondcolour: this.getSelectedSwatchName('.obj-base'),
-            model: selectedOption?.getAttribute('data-label')?.trim() || ''
-        };
+        // Array of model types that have specific shadow images
+        const shadowsArr = [
+            'tt02', 'tt03', 'tt12', 'tt04'
+        ];
 
-        const cleanedParams = Object.fromEntries(
-            Object.entries(params).filter(([, value]) => Boolean(value))
-        );
+        // Check if texture name is in the shadows array and adjust camera accordingly
+        shadowsArr.forEach(shadow => {
 
-        if (Object.keys(cleanedParams).length) {
-            this.updateURL(cleanedParams);
+            if (this.modelState.textureName.includes(shadow)) {
+
+                // Set the shadow image name in state
+                this.modelState.shadowName = `shadow-${shadow}.jpg`;
+
+                // Adjust camera settings based on screen size for tt02 shadow
+                if(shadow === 'tt02') {
+                    this.modelState.adjustment = (window.innerWidth < 768) ? 35 : 29;
+                }
+
+                // Exit loop once a match is found
+                return; 
+            }
+
+        });
+
+    }
+
+    /**
+     * Sets the camera adjustment value based on the current window width.
+     */
+    setAdjustment() {
+        this.modelState.adjustment = window.innerWidth < 768 ? 50 : 40;
+    }
+
+    /**
+     * Set product model based on the selected model ID, 
+     * update shadow and load the corresponding 3D model.
+     * @param {int} modelId 
+     */
+    setProductModel(modelId) {
+
+        // Update the texture name in state based on the selected model ID
+        this.modelState.textureName = modelId;
+        
+        // Update the shadow image in use based on the new model type
+        this.setShadow();
+        
+        // Update shadow beneath the model
+        this.loadGround();
+        
+        // Load the new 3D model based on the updated texture name and shadow
+        this.loadModel();
+
+    }
+
+    // ===================== Fullscreen Functions ===================== //
+
+    /**
+     * Removes fullscreen-active class when exiting fullscreen
+     * @returns {void}
+     */
+    onFullscreenChange = () => {
+        const isFullscreen = !!document.fullscreenElement;
+        if (!isFullscreen) {
+            this.container.classList.remove('fullscreen-active');
         }
     }
 
-    setProductModel(modelId) {
-        this.modelId = modelId;
-        this.textureName = modelId;
-        this.loadModel();
+    /**
+     * Handles fullscreen toggle
+     * @returns {void}
+     */
+    toggleFullscreen = () => {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const isFullscreen =
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.msFullscreenElement;
+
+        if (isMobile) {
+            this.container.classList.toggle('fullscreen-active');
+        } else {
+            if (!isFullscreen) {
+                this.container.requestFullscreen().catch(() => {
+                    this.container.classList.toggle('fullscreen-active');
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
     }
+
+    // ===================== Fullscreen Functions ===================== //
 
     /**
      * Fades out loading screen when the 3D scene is ready
@@ -121,18 +200,21 @@ export default class ProductViewer {
      * Sets up listeners for fullscreen toggle and changes
      * @returns {void}
      */
-    initEventListeners() {
+    addEventListeners() {
+
+        // Find the fullscreen toggle button in the DOM
+        this.toggleButton = document.querySelector('.obj3dviewer-toggle');
 
         // Listen for window resize to adjust camera and renderer
         if (this.toggleButton) {
-            this.toggleButton.addEventListener('click', this.toggleHandler);
-            this.toggleButton.addEventListener('touchstart', this.toggleHandler);
+            this.toggleButton.addEventListener('click', this.toggleFullscreen);
+            this.toggleButton.addEventListener('touchstart', this.toggleFullscreen);
         }
 
         // Listen for fullscreen changes to update UI state
-        document.addEventListener('fullscreenchange', this.fullscreenChangeHandler);
-        document.addEventListener('webkitfullscreenchange', this.fullscreenChangeHandler);
-        document.addEventListener('msfullscreenchange', this.fullscreenChangeHandler);
+        document.addEventListener('fullscreenchange', this.onFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', this.onFullscreenChange);
+        document.addEventListener('msfullscreenchange', this.onFullscreenChange);
 
     }
 
@@ -195,14 +277,14 @@ export default class ProductViewer {
             urlParams.id = productId;
         }
 
-        // Update the URL
-        this.updateURL(urlParams);
-
         // Build query string from the update object and update our defaults
-        this.queryString = this.buildQueryString(update);
+        this.modelState.queryString = this.buildQueryString(update);
 
         // Reload the model to reflect the new colour options
         this.loadModel();
+
+        // Return params for url update in the UI
+        return urlParams;
 
     }
 
@@ -236,125 +318,14 @@ export default class ProductViewer {
     }
 
     /**
-     * Updates the URL with the given parameters.
-     * @param {object} params - The parameters to update in the URL.
-     * @returns {void}
-     */
-    updateURL(params = {}) {
-
-        const map = {
-            'id': 'id',
-            'colour': 'colour',
-            'metalcolour': 'veneer',
-            'secondcolour': 'base',
-            'model': 'model'
-        };
-
-        // Get current URL object
-        const url = new URL(window.location.href);
-
-        // Loop over params and update URL
-        for (const [key, value] of Object.entries(params)) {
-
-            if (value) {
-
-                // Clean value: remove "swatch" or "banding"
-                let cleanedValue = value.replace(/(swatch-|banding-)/gi, '').trim();
-
-                if (cleanedValue) {
-
-                    // Encode properly with %20
-                    const encodedValue = encodeURIComponent(cleanedValue);
-
-                    // Add or update parameter manually
-                    url.searchParams.set(map[key], encodedValue);
-
-                } else {
-
-                    url.searchParams.delete(map[key]);
-
-                }
-
-            } else {
-
-                url.searchParams.delete(map[key]);
-
-            }
-
-        }
-
-        // Manually rebuild query string to prevent + for spaces
-        let queryString = '';
-        url.searchParams.forEach((val, key) => {
-            queryString += `${key}=${val}&`;
-        });
-        queryString = queryString.slice(0, -1); // remove trailing &
-
-        // Build new URL
-        const newUrl = `${url.origin}${url.pathname}${queryString ? '?' + queryString : ''}`;
-
-        // Update browser URL without reload
-        window.history.replaceState({}, '', newUrl);
-
-        // Update QR code
-        this.updateQRCode(new URLSearchParams(queryString));
-
-    }
-
-    /**
-     * Update QR code with latest url post model change
-     * @param {URLSearchParams} params - The URL search parameters to update the QR code with.
-     * @returns {void}
-     */
-    updateQRCode(params) {
-
-        const qrcodeEl = document.querySelector('.qrcode');
-        if (!qrcodeEl) return;
-
-        // Build full URL using current location
-        const url = new URL(window.location.href);
-
-        // Replace search params with the provided params (if passed)
-        if (params instanceof URLSearchParams) {
-            url.search = params.toString();
-        }
-
-        // Only keep allowed params
-        const paramsToInclude = ['model', 'colour', 'veneer', 'base'];
-        // Collect keys to delete to avoid mutation during iteration
-        const keysToDelete = [];
-        url.searchParams.forEach((value, key) => {
-            if (!paramsToInclude.includes(key)) {
-                keysToDelete.push(key);
-            }
-        });
-
-        // Delete unwanted params
-        keysToDelete.forEach(key => url.searchParams.delete(key));
-
-        // Set title attribute for debugging or hover text
-        qrcodeEl.setAttribute('title', url.toString());
-
-        // Clear existing QR code
-        qrcodeEl.innerHTML = '';
-
-        // Generate QR code
-        new QRCode(qrcodeEl, {
-            text: url.toString(),
-            width: 128,
-            height: 128
-        });
-    }
-
-    /**
      * Initializes 3D scene and camera
      * @returns {void}
      */
     initScene() {
-        this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0xf3f3f3);
+        this.viewer.scene = new THREE.Scene();
+        this.viewer.scene.background = new THREE.Color(0xf3f3f3);
         this.camera = new THREE.PerspectiveCamera(
-            this.adjustment || 40,
+            this.modelState.adjustment || 40,
             this.container.clientWidth / this.container.clientHeight,
             1,
             100
@@ -381,7 +352,7 @@ export default class ProductViewer {
      * @returns {void}
      */
     initLights() {
-        this.scene.add(new THREE.AmbientLight(0xffffff, 2));
+        this.viewer.scene.add(new THREE.AmbientLight(0xffffff, 2));
         // Spotlights and directional lights for realistic shadows
         this.spotLight = new THREE.SpotLight(0xffffff, 250);
         this.spotLight.angle = Math.PI / 15;
@@ -391,8 +362,8 @@ export default class ProductViewer {
         this.spotLight.shadow.camera.near = 8;
         this.spotLight.shadow.camera.far = 36;
         this.spotLight.shadow.mapSize.set(256, 256);
-        this.scene.add(this.spotLight);
-        this.scene.add(this.spotLight.target);
+        this.viewer.scene.add(this.spotLight);
+        this.viewer.scene.add(this.spotLight.target);
         this.spotLight.target.position.set(1, 0, -25);
 
         // Additional lights
@@ -404,8 +375,8 @@ export default class ProductViewer {
         this.dirLight.shadow.camera.near = 3;
         this.dirLight.shadow.camera.far = 100;
         this.dirLight.shadow.mapSize.set(512, 512);
-        this.scene.add(this.dirLight);
-        this.scene.add(this.dirLight.target);
+        this.viewer.scene.add(this.dirLight);
+        this.viewer.scene.add(this.dirLight.target);
         this.dirLight.target.position.set(0, 11, 0);
 
         this.dirLight2 = new THREE.SpotLight(0xffffff, 100);
@@ -413,8 +384,8 @@ export default class ProductViewer {
         this.dirLight2.angle = Math.PI / 6;
         this.dirLight2.penumbra = 0.1;
         this.dirLight2.castShadow = true;
-        this.scene.add(this.dirLight2);
-        this.scene.add(this.dirLight2.target);
+        this.viewer.scene.add(this.dirLight2);
+        this.viewer.scene.add(this.dirLight2.target);
         this.dirLight2.target.position.set(0, 8, 0);
 
         this.dirLight3 = new THREE.SpotLight(0xffffff, 500);
@@ -422,15 +393,15 @@ export default class ProductViewer {
         this.dirLight3.angle = Math.PI / 4;
         this.dirLight3.penumbra = 0.5;
         this.dirLight3.castShadow = true;
-        this.scene.add(this.dirLight3);
-        this.scene.add(this.dirLight3.target);
+        this.viewer.scene.add(this.dirLight3);
+        this.viewer.scene.add(this.dirLight3.target);
         this.dirLight3.target.position.set(0, 10, 0);
 
         this.rectLight = new THREE.SpotLight(0xffffff, 1500);
         this.rectLight.position.set(-25, 29, -75);
         this.rectLight.lookAt(new THREE.Vector3(0, 12, 0));
-        this.scene.add(this.rectLight);
-        this.scene.add(this.rectLight.target);
+        this.viewer.scene.add(this.rectLight);
+        this.viewer.scene.add(this.rectLight.target);
     }
 
     /**
@@ -520,7 +491,7 @@ export default class ProductViewer {
      */
     loadGround() {
         const texPath = '/wp-content/plugins/tm-three-viewer/assets/models/textures/';
-        const url = texPath + this.shadowName;
+        const url = texPath + this.modelState.shadowName;
 
         const texture = this.preloadedTextures && this.preloadedTextures['groundshadow']
             ? this.preloadedTextures['groundshadow']
@@ -541,7 +512,7 @@ export default class ProductViewer {
         ground.receiveShadow = true;
         ground.position.set(0, 0, 0);
         ground.rotation.y = Math.PI / 4;
-        this.scene.add(ground);
+        this.viewer.scene.add(ground);
     }
 
     /**
@@ -553,10 +524,10 @@ export default class ProductViewer {
         // Add base path constant from DOM 
         const base = TM3DPlugin?.url ? TM3DPlugin.url + 'assets/models' : '';
 
-        if (!this.textureName || !this.scene) return;
+        if (!this.modelState.textureName || !this.viewer.scene) return;
 
-        const mtlUrl = `${base}/mtl.php${this.queryString}`;
-        const objUrl = `${base}/${this.textureName}-obj.php${this.queryString}`;
+        const mtlUrl = `${base}/mtl.php${this.modelState.queryString}`;
+        const objUrl = `${base}/${this.modelState.textureName}-obj.php${this.modelState.queryString}`;
 
         const mtlLoader = new MTLLoader();
         const objLoader = new OBJLoader();
@@ -569,9 +540,9 @@ export default class ProductViewer {
 
             objLoader.load(objUrl, (object) => {
 
-                if (this.loadedModel) {
-                    this.scene.remove(this.loadedModel);
-                    this.loadedModel.traverse((child) => {
+                if (this.viewer.loadedModel) {
+                    this.viewer.scene.remove(this.viewer.loadedModel);
+                    this.viewer.loadedModel.traverse((child) => {
                         if (child.geometry) child.geometry.dispose();
                         if (child.material) {
                             if (Array.isArray(child.material)) {
@@ -597,10 +568,10 @@ export default class ProductViewer {
                     }
                 });
 
-                this.scene.add(object);
-                this.loadedModel = object;
+                this.viewer.scene.add(object);
+                this.viewer.loadedModel = object;
 
-                if (!this.cameraAnimated) {
+                if (!this.modelState.cameraAnimated) {
                     gsap.to(this.camera.position, {
                         x: 0,
                         y: 14,
@@ -608,7 +579,7 @@ export default class ProductViewer {
                         duration: 2.5,
                         ease: "back.inOut"
                     });
-                    this.cameraAnimated = true;
+                    this.modelState.cameraAnimated = true;
                 }
 
             });
@@ -626,42 +597,7 @@ export default class ProductViewer {
         if (this.controls) {
             this.controls.update();
         }
-        this.renderer.render(this.scene, this.camera);
-    };
-
-    /**
-     * Handles fullscreen toggle
-     * @returns {void}
-     */
-    toggleFullscreen() {
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        const isFullscreen =
-            document.fullscreenElement ||
-            document.webkitFullscreenElement ||
-            document.msFullscreenElement;
-
-        if (isMobile) {
-            this.container.classList.toggle('fullscreen-active');
-        } else {
-            if (!isFullscreen) {
-                this.container.requestFullscreen().catch(() => {
-                    this.container.classList.toggle('fullscreen-active');
-                });
-            } else {
-                document.exitFullscreen();
-            }
-        }
-    }
-
-    /**
-     * Removes fullscreen-active class when exiting fullscreen
-     * @returns {void}
-     */
-    onFullscreenChange() {
-        const isFullscreen = !!document.fullscreenElement;
-        if (!isFullscreen) {
-            this.container.classList.remove('fullscreen-active');
-        }
+        this.renderer.render(this.viewer.scene, this.camera);
     }
 
     /**
@@ -831,29 +767,31 @@ export default class ProductViewer {
     /**
      * Initializes the product configurator viewer, preloads textures, and sets up the scene
      */
-    init() {
+    initViewer() {
 
+        // Get initial layer values from DOM and URL params
         const initialValues = this.getInitialLayerValues();
 
         // Ensure first model load reflects URL/default layers even before swatch events fire
-        this.queryString = this.buildQueryString(initialValues);
+        this.modelState.queryString = this.buildQueryString(initialValues);
 
+        // Determine texture path based on plugin URL or fallback to default path
         const texPath = TM3DPlugin?.url ? TM3DPlugin.url + 'assets/models/textures/' : '/wp-content/plugins/tm-three-viewer/assets/models/textures/';
-        
-        const version = '?v=1';
         
         // Collect texture URLs from the layer keys only.
         // secondcolourname is metadata for the base layer name, not a texture file.
         const textureKeys = Object.keys(initialValues).filter(key => key !== 'secondcolourname');
         
+        // Preload textures for the initial layer values
         const textureURLsByKey = {};
         textureKeys.forEach(key => {
             const imageName = initialValues?.[key];
             if (imageName) {
-                textureURLsByKey[key] = texPath + imageName + '.jpg' + version;
+                textureURLsByKey[key] = texPath + imageName + '.jpg' + (TM3DPlugin?.version ? `?v=${TM3DPlugin.version}` : '');
             }
         });
 
+        // Preload textures and initialize the scene once all textures are loaded
         this.preloadTextures(Object.values(textureURLsByKey))
             .then(texturesByUrl => {
                 this.preloadedTextures = {};
@@ -861,7 +799,7 @@ export default class ProductViewer {
                     this.preloadedTextures[key] = texturesByUrl[url];
                 }
                 // Initialize scene and related components once
-                if (!this.scene) {
+                if (!this.viewer.scene) {
                     this.initScene();
                     this.initRenderer();
                     this.initLights();
@@ -869,8 +807,8 @@ export default class ProductViewer {
                     this.initControls();
                     this.loadGround();
                     window.addEventListener('resize', () => this.onResize());
-                    if (!this.isAnimating) {
-                        this.isAnimating = true;
+                    if (!this.runtime.isAnimating) {
+                        this.runtime.isAnimating = true;
                         this.animate();
                     }
                 }
@@ -880,7 +818,7 @@ export default class ProductViewer {
             .catch(err => {
                 console.warn('Failed to preload one or more images:', err);
 
-                if (!this.scene) {
+                if (!this.viewer.scene) {
                     this.initScene();
                     this.initRenderer();
                     this.initLights();
@@ -888,8 +826,8 @@ export default class ProductViewer {
                     this.initControls();
                     this.loadGround();
                     window.addEventListener('resize', () => this.onResize());
-                    if (!this.isAnimating) {
-                        this.isAnimating = true;
+                    if (!this.runtime.isAnimating) {
+                        this.runtime.isAnimating = true;
                         this.animate();
                     }
                 }

@@ -27,7 +27,6 @@ export default class Configurator {
         this.addCollectionFilterListeners();
         this.updateModel();
         this.syncInitialURLState();
-        this.viewer.init();
     }
 
     /**
@@ -82,7 +81,9 @@ export default class Configurator {
 
                 // Update the viewer with the selected product type
                 const id = input.id;
-                this.viewer.updateColourOptions(this.state.selectedOptions, id);
+                const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions, id);
+
+                this.ui.updateURL(urlParams);
 
                 return;
             }
@@ -94,7 +95,9 @@ export default class Configurator {
                 this.rules.setColourOptions(swatchName);
 
                 // Update the viewer with the selected top colour
-                this.viewer.updateColourOptions(this.state.selectedOptions);
+                const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions);
+
+                this.ui.updateURL(urlParams);
 
                 return;
             }
@@ -106,7 +109,11 @@ export default class Configurator {
                 this.rules.setSelectedOptions();
 
                 // Update the viewer with the selected options
-                this.viewer.updateColourOptions(this.state.selectedOptions);
+                const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions);
+
+                this.ui.updateURL(urlParams);
+
+                return;
 
             }
 
@@ -217,6 +224,5 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const configurator = new Configurator();
     const viewer = configurator.viewer;  
-
-    viewer.init();
+    
 });
