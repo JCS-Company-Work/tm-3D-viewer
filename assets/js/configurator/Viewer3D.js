@@ -145,13 +145,34 @@ export default class ProductViewer {
 
         // Update the texture name in state based on the selected model ID
         this.modelState.textureName = modelId;
+
+        // Re-apply baseline camera adjustment for this viewport
+        this.setAdjustment();
         
         // Update the shadow image in use based on the new model type
         this.setShadow();
+
+        // Re-run the same first-load camera path for model switches
+        if (this.camera) {
+            this.camera.fov = this.modelState.adjustment || this.camera.fov;
+            this.camera.position.set(25, 24, -25);
+            this.camera.updateProjectionMatrix();
+        }
+        this.modelState.cameraAnimated = false;
         
         // Update shadow beneath the model
         this.loadGround();
         
+        // Re-initialize controls to ensure proper interaction with the new model
+        this.initControls();
+
+        // Briefly show loading overlay while the new model is fetched and rendered
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            loadingScreen.style.display = '';
+            loadingScreen.classList.remove('fade-out');
+        }
+
         // Load the new 3D model based on the updated texture name and shadow
         this.loadModel();
 
@@ -666,6 +687,9 @@ export default class ProductViewer {
                 this.viewer.scene.add(object);
                 this.viewer.loadedModel = object;
 
+                // Hide loading overlay once the new model is attached
+                this.fadeLoading();
+
                 // Animate camera to a new position if it hasn't been animated yet
                 if (!this.modelState.cameraAnimated) {
                     gsap.to(this.camera.position, {
@@ -934,17 +958,17 @@ export default class ProductViewer {
         // Add fade-out class
         loadingScreen.classList.add('fade-out');
         
-        // Listen for transition end to remove the loading screen from DOM
+        // Listen for transition end and hide, but keep element for reuse on model changes
         loadingScreen.addEventListener('transitionend', function handler(e) {
             if (e.propertyName === 'opacity') {
-                loadingScreen.remove();
+                loadingScreen.style.display = 'none';
             }
-        });
+        }, { once: true });
 
         // Safety fallback in case transitionend doesn't fire
         setTimeout(() => {
             if (document.body.contains(loadingScreen)) {
-                loadingScreen.remove();
+                loadingScreen.style.display = 'none';
             }
         }, 3000);
     }
