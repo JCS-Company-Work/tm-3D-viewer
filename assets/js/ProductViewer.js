@@ -56,6 +56,29 @@ export default class ProductViewer {
         
     }
 
+    // ===================== Initialisation ===================== //
+    /**
+     * Sets up listeners for fullscreen toggle and changes
+     * @returns {void}
+     */
+    addEventListeners() {
+
+        // Find the fullscreen toggle button in the DOM
+        this.toggleButton = document.querySelector('.obj3dviewer-toggle');
+
+        // Listen for window resize to adjust camera and renderer
+        if (this.toggleButton) {
+            this.toggleButton.addEventListener('click', this.toggleFullscreen);
+            this.toggleButton.addEventListener('touchstart', this.toggleFullscreen);
+        }
+
+        // Listen for fullscreen changes to update UI state
+        document.addEventListener('fullscreenchange', this.onFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', this.onFullscreenChange);
+        document.addEventListener('msfullscreenchange', this.onFullscreenChange);
+
+    }
+
     // ===================== Model Functions ===================== //
 
     /**
@@ -171,52 +194,7 @@ export default class ProductViewer {
         }
     }
 
-    // ===================== Fullscreen Functions ===================== //
 
-    /**
-     * Fades out loading screen when the 3D scene is ready
-     * @returns {void}
-     */
-    fadeLoading() {
-        const loadingScreen = document.getElementById('loading-screen');
-        if (!loadingScreen) return;
-
-        loadingScreen.classList.add('fade-out');
-        loadingScreen.addEventListener('transitionend', function handler(e) {
-            if (e.propertyName === 'opacity') {
-                loadingScreen.remove();
-            }
-        });
-
-        // Safety fallback in case transitionend doesn't fire
-        setTimeout(() => {
-            if (document.body.contains(loadingScreen)) {
-                loadingScreen.remove();
-            }
-        }, 3000);
-    }
-
-    /**
-     * Sets up listeners for fullscreen toggle and changes
-     * @returns {void}
-     */
-    addEventListeners() {
-
-        // Find the fullscreen toggle button in the DOM
-        this.toggleButton = document.querySelector('.obj3dviewer-toggle');
-
-        // Listen for window resize to adjust camera and renderer
-        if (this.toggleButton) {
-            this.toggleButton.addEventListener('click', this.toggleFullscreen);
-            this.toggleButton.addEventListener('touchstart', this.toggleFullscreen);
-        }
-
-        // Listen for fullscreen changes to update UI state
-        document.addEventListener('fullscreenchange', this.onFullscreenChange);
-        document.addEventListener('webkitfullscreenchange', this.onFullscreenChange);
-        document.addEventListener('msfullscreenchange', this.onFullscreenChange);
-
-    }
 
     /**
      * Updates the selected colour options based on the event detail
@@ -317,6 +295,91 @@ export default class ProductViewer {
         return '?' + queryParts.join('&');
     }
 
+    // ===================== 3d Viewer Functions ===================== //
+    /**
+     * Initializes the product configurator viewer, preloads textures, and sets up the scene
+     */
+    initViewer() {
+
+        // Get initial layer values from DOM and URL params
+        const initialValues = this.getInitialLayerValues();
+
+        // Ensure first model load reflects URL/default layers even before swatch events fire
+        this.modelState.queryString = this.buildQueryString(initialValues);
+
+        // Determine texture path based on plugin URL or fallback to default path
+        const texPath = TM3DPlugin?.url ? TM3DPlugin.url + 'assets/models/textures/' : '/wp-content/plugins/tm-three-viewer/assets/models/textures/';
+        
+        // Collect texture URLs from the layer keys only.
+        // secondcolourname is metadata for the base layer name required by buildQueryString, not a texture file so remove it.
+        const textureKeys = Object.keys(initialValues).filter(key => key !== 'secondcolourname');
+        
+        // Preload textures for the initial layer values
+        const textureURLsByKey = {};
+        textureKeys.forEach(key => {
+            const imageName = initialValues?.[key];
+            if (imageName) {
+                textureURLsByKey[key] = texPath + imageName + '.jpg' + (TM3DPlugin?.version ? `?v=${TM3DPlugin.version}` : '');
+            }
+        });
+
+        // Preload textures and initialize the scene once all textures are loaded
+        this.preloadTextures(Object.values(textureURLsByKey))
+            .then(texturesByUrl => {
+                this.preloadedTextures = {};
+                for (const [key, url] of Object.entries(textureURLsByKey)) {
+                    this.preloadedTextures[key] = texturesByUrl[url];
+                }
+                // Initialize scene and related components once
+                if (!this.viewer.scene) {
+                    this.createScene();
+                }
+                this.loadModel();
+                this.fadeLoading();
+            })
+            .catch(err => {
+                console.warn('Failed to preload one or more images:', err);
+
+                if (!this.viewer.scene) {
+                    this.createScene();
+                }
+                this.loadModel();
+                this.fadeLoading();
+            });
+    }
+
+    /**
+     * Creates the 3D scene, renderer, lights, controls, and ground plane, and starts the animation loop.
+     */
+    createScene() {
+
+        // Init scene
+        this.initScene();
+        
+        // Init renderer
+        this.initRenderer();
+        
+        // Init lights
+        this.initLights();
+        
+        // Init shadow map viewers for debugging
+        this.initShadowMapViewers();
+        
+        // Init controls
+        this.initControls();
+
+        // Load ground plane
+        this.loadGround();
+
+        // Handle window resize
+        window.addEventListener('resize', () => this.onResize());
+        if (!this.runtime.isAnimating) {
+            this.runtime.isAnimating = true;
+            this.animate();
+        }
+        
+    }
+
     /**
      * Initializes 3D scene and camera
      * @returns {void}
@@ -338,13 +401,19 @@ export default class ProductViewer {
      * @returns {void}
      */
     initRenderer() {
+
+        // Create WebGL renderer with antialiasing and alpha transparency
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        
+        // Limit pixel ratio for performance on high-DPI screens
         const maxPixelRatio = 1.5;
+        
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.container.appendChild(this.renderer.domElement);
+
     }
 
     /**
@@ -352,7 +421,9 @@ export default class ProductViewer {
      * @returns {void}
      */
     initLights() {
+        
         this.viewer.scene.add(new THREE.AmbientLight(0xffffff, 2));
+        
         // Spotlights and directional lights for realistic shadows
         this.spotLight = new THREE.SpotLight(0xffffff, 250);
         this.spotLight.angle = Math.PI / 15;
@@ -490,17 +561,24 @@ export default class ProductViewer {
      * @returns {void}
      */
     loadGround() {
+
+        // Remove existing ground if present
         const texPath = '/wp-content/plugins/tm-three-viewer/assets/models/textures/';
+
+        // Construct url path
         const url = texPath + this.modelState.shadowName;
 
+        // Texture is preloaded, use it; otherwise, load it directly
         const texture = this.preloadedTextures && this.preloadedTextures['groundshadow']
             ? this.preloadedTextures['groundshadow']
             : new THREE.TextureLoader().load(url);
 
+        // Set texture properties for proper display
         texture.center = new THREE.Vector2(0.5, 0.5);
         texture.rotation = - Math.PI / 4;
         texture.repeat.set(0.70, 0.70);
 
+        // Geometry and material for the ground plane
         const geometry = new THREE.BoxGeometry(45, 0.75, 45);
         const material = new THREE.MeshBasicMaterial({
             map: texture,
@@ -508,11 +586,13 @@ export default class ProductViewer {
             combine: 0
         });
 
+        // Create the ground mesh, set its properties, and add it to the scene
         const ground = new THREE.Mesh(geometry, material);
         ground.receiveShadow = true;
         ground.position.set(0, 0, 0);
         ground.rotation.y = Math.PI / 4;
         this.viewer.scene.add(ground);
+        
     }
 
     /**
@@ -524,24 +604,36 @@ export default class ProductViewer {
         // Add base path constant from DOM 
         const base = TM3DPlugin?.url ? TM3DPlugin.url + 'assets/models' : '';
 
+        // Ensure texture name and scene are available before proceeding
         if (!this.modelState.textureName || !this.viewer.scene) return;
 
+        // Construct URLs for MTL and OBJ files based on the current model state
         const mtlUrl = `${base}/mtl.php${this.modelState.queryString}`;
         const objUrl = `${base}/${this.modelState.textureName}-obj.php${this.modelState.queryString}`;
 
+        // Load the MTL and OBJ files using Three.js loaders
         const mtlLoader = new MTLLoader();
         const objLoader = new OBJLoader();
 
+        // Load materials from the MTL file
         mtlLoader.load(mtlUrl, (materials) => {
 
+            // Preload materials to ensure textures are ready before loading the OBJ
             materials.preload();
 
+            // Set the loaded materials to the OBJ loader
             objLoader.setMaterials(materials);
 
+            // Load the OBJ model with the applied materials
             objLoader.load(objUrl, (object) => {
 
+                // Remove the previously loaded model from the scene and dispose of its resources
                 if (this.viewer.loadedModel) {
+
+                    // Remove the old model from the scene
                     this.viewer.scene.remove(this.viewer.loadedModel);
+
+                    // Dispose of geometries and materials to free up memory
                     this.viewer.loadedModel.traverse((child) => {
                         if (child.geometry) child.geometry.dispose();
                         if (child.material) {
@@ -554,9 +646,11 @@ export default class ProductViewer {
                     });
                 }
 
+                // Set the position and scale of the new model
                 object.position.y = 4.5;
                 object.scale.setScalar(0.1);
 
+                // Traverse the model's hierarchy to apply shadows and preloaded textures
                 object.traverse(node => {
                     if (node.isMesh) {
                         node.castShadow = true;
@@ -568,9 +662,11 @@ export default class ProductViewer {
                     }
                 });
 
+                // Add the new model to the scene and update the reference
                 this.viewer.scene.add(object);
                 this.viewer.loadedModel = object;
 
+                // Animate camera to a new position if it hasn't been animated yet
                 if (!this.modelState.cameraAnimated) {
                     gsap.to(this.camera.position, {
                         x: 0,
@@ -615,9 +711,16 @@ export default class ProductViewer {
      * @param {string[]} urls - Array of texture URLs to preload
      * @returns {Promise<Object>} - A promise that resolves with an object mapping URLs to textures
      */
-    preloadTextures(urls) {
+    async preloadTextures(urls) {
+
+
+        // Create a texture loader with cross-origin support
         const loader = new THREE.TextureLoader();
+        
+        // Set cross-origin to 'anonymous' to handle textures from different origins
         loader.setCrossOrigin('anonymous');
+
+        // Create an array of promises for loading each texture
         const texturePromises = urls.map(url =>
             new Promise((resolve, reject) => {
                 loader.load(
@@ -632,12 +735,14 @@ export default class ProductViewer {
                 );
             })
         );
-        return Promise.all(texturePromises).then(results => {
-            return results.reduce((acc, curr) => {
-                acc[curr.url] = curr.texture;
-                return acc;
-            }, {});
-        });
+
+        // Wait for all texture promises to resolve and return an object mapping URLs to textures
+        const results = await Promise.all(texturePromises);
+        return results.reduce((acc, curr) => {
+            acc[curr.url] = curr.texture;
+            return acc;
+        }, {});
+
     }
 
     /**
@@ -647,8 +752,12 @@ export default class ProductViewer {
      * @returns {string} - The normalised slug
      */
     normaliseSwatchSlug(value, prefix) {
+
+        // Return an empty string if the value is falsy
         if (!value) return '';
 
+        // Convert the value to lowercase, replace '+' with spaces, trim whitespace, 
+        // replace non-alphanumeric characters with hyphens, and remove leading/trailing hyphens
         const slug = value
             .toLowerCase()
             .replace(/\+/g, ' ')
@@ -656,9 +765,15 @@ export default class ProductViewer {
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-+|-+$/g, '');
 
+        // Return an empty string if the slug is empty
         if (!slug) return '';
+
+        // If the slug already starts with 'swatch-' or 'banding-', return it as is
         if (slug.startsWith('swatch-') || slug.startsWith('banding-')) return slug;
+
+        // Otherwise, prepend the specified prefix and return the normalised slug
         return `${prefix}${slug}`;
+
     }
 
     /**
@@ -667,17 +782,26 @@ export default class ProductViewer {
      * @returns {string} - The name of the selected swatch
      */
     getSelectedSwatchName(groupSelector) {
+
+        // Find the checked input within the specified group
         const checkedInput = document.querySelector(`${groupSelector} .wapf-input:checked`);
+
+        // If no checked input is found, return an empty string
         if (!checkedInput) return '';
 
+        // Get the closest label element to the checked input
         const label = checkedInput.closest('label');
+        
+        // Determine the swatch name from the label's aria-label, input value, or text content
         const swatchName =
             label?.getAttribute('aria-label') ||
             checkedInput.value ||
             label?.textContent ||
             '';
 
+        // Return the trimmed swatch name
         return swatchName.trim();
+
     }
 
     /**
@@ -686,8 +810,17 @@ export default class ProductViewer {
      * @returns {string|null} - The image file name or null if not found
      */
     getImageFileName(swatchImage) {
+
+        // Check if the swatch image element exists
+        if (!swatchImage) return null;
+
+        // Get the src attribute of the swatch image
         const imgSrc = swatchImage?.src;
+        
+        // Use regex to extract the swatch name from the image source URL
         const swatchName = imgSrc?.match(/uploads\/(.+?)-\d+x\d+\.jpg/);
+        
+        // Return the matched swatch name or null if not found
         return swatchName ? swatchName[1] : null;
     }
 
@@ -698,12 +831,22 @@ export default class ProductViewer {
      * @returns {string} - The filename of the selected swatch
      */
     getSelectedSwatchFilename(groupSelector, prefix = 'swatch-') {
+
+        // Find the checked input within the specified group
         const checkedInput = document.querySelector(`${groupSelector} .wapf-input:checked`);
+        
+        // If no checked input is found, return an empty string
         if (!checkedInput) return '';
 
+        // Find the swatch image element associated with the checked input
         const swatchEl = checkedInput.closest('.wapf-swatch')?.querySelector('.swatch');
+        
+        // If no swatch image element is found, return an empty string
         const filename = this.getImageFileName(swatchEl);
+        
+        // Normalize the filename to ensure it has the correct prefix and format
         return this.normaliseSwatchSlug(filename, prefix);
+
     }
 
     /**
@@ -712,128 +855,97 @@ export default class ProductViewer {
      */
     getInitialLayerValues() {
 
-        // Defaut values object
         const initialValues = {
             colour: 'swatch-macchia-vecchia',
             metalcolour: 'banding-brushed-gold',
             secondcolour: 'swatch-macchia-vecchia'
         };
 
-        // Check the DOM for selected swatches to set initial values, then override with URL params if present
-        const topFromDom = this.getSelectedSwatchFilename('.obj-top-colour', 'swatch-');
-        const metalFromDom = this.getSelectedSwatchFilename('.obj-metal-edge-veneer', 'banding-');
-        const baseFromDomFilename = this.getSelectedSwatchFilename('.obj-base', 'swatch-');
+        // Check the DOM for selected swatches to set initial values
+        const currentlySelected = {
+            colour: this.getSelectedSwatchFilename('.obj-top-colour', 'swatch-'),
+            metalcolour: this.getSelectedSwatchFilename('.obj-metal-edge-veneer', 'banding-'),
+            secondcolour: this.getSelectedSwatchFilename('.obj-base', 'swatch-')
+        };
 
-        // If swatches are selected in the DOM, use those as initial values
-        if (topFromDom) initialValues.colour = topFromDom;
-        if (metalFromDom) initialValues.metalcolour = metalFromDom;
-        if (baseFromDomFilename) initialValues.secondcolour = baseFromDomFilename;
+        // Override with DOM values if present
+        Object.entries(currentlySelected).forEach(([key, val]) => {
+            if (val) initialValues[key] = val;
+        });
 
-        // Check URL params to override initial values if present
+        // If we have a base swatch name, set secondcolourname for mtl.php to use as the base layer name in the UI
+        if (currentlySelected.secondcolour) {
+            // Required by mtl.php/obj.php material naming for the base layer.
+            initialValues.secondcolourname = currentlySelected.secondcolour.replace(/^swatch-/, '').replace(/-/g, ' ').split('-').join(' ');
+        }
+
+        // Check for any missing required values
+        const missingKeys = Object.keys(initialValues).filter(key => !initialValues[key]);
+
+        // If any required values are missing, pass keys to apply URL overrides to fill them
+        if (missingKeys.length) {
+            this.applyUrlOverrides(initialValues, missingKeys);
+        }
+
+        // Return the final initial values object
+        return initialValues;
+
+    }
+
+    /**
+     * Applies URL overrides to fill in missing values
+     * @param {object} values - The current values object
+     * @param {Array} missingKeys - The keys that are missing and need to be filled from the URL
+     */
+    applyUrlOverrides(values, missingKeys) {
+
+        // Parse the current URL to extract query parameters
         const url = new URL(window.location.href);
-        
-        // Normalise URL params to match expected format
-        const urlInitialValues = {
+
+        // Map URL parameters to the corresponding keys in the values object
+        const urlMap = {
             colour: this.normaliseSwatchSlug(url.searchParams.get('colour'), 'swatch-'),
             metalcolour: this.normaliseSwatchSlug(url.searchParams.get('veneer'), 'banding-'),
             secondcolour: this.normaliseSwatchSlug(url.searchParams.get('base'), 'swatch-')
         };
 
-        // Override initial values with URL params if they exist
-        if (urlInitialValues.colour) initialValues.colour = urlInitialValues.colour;
-        if (urlInitialValues.metalcolour) initialValues.metalcolour = urlInitialValues.metalcolour;
-        if (urlInitialValues.secondcolour) initialValues.secondcolour = urlInitialValues.secondcolour;
-
-        // Determine base layer name for mtl.php based on URL param or DOM selection, required by material naming in mtl.php/obj.php
-        const baseFromUrl = decodeURIComponent(url.searchParams.get('base') || '')
-            .replace(/\+/g, ' ')
-            .trim();
-
-        // If no base from URL, fallback to DOM selection for base swatch name
-        const baseFromDom = this.getSelectedSwatchName('.obj-base');
-        const baseSwatchName = baseFromUrl || baseFromDom;
-
-        // If we have a base swatch name, set secondcolourname for mtl.php to use as the base layer name in the UI
-        if (baseSwatchName) {
-            // Required by mtl.php/obj.php material naming for the base layer.
-            initialValues.secondcolourname = baseSwatchName;
-        }
-
-        // Return final values
-        return initialValues;
-        
+        // Iterate over the missing keys and fill them with values from the URL if available
+        missingKeys.forEach(key => {
+            if (urlMap[key]) {
+                values[key] = urlMap[key];
+            }
+        });
     }
 
+    // ===================== Utility Functions ===================== //
     /**
-     * Initializes the product configurator viewer, preloads textures, and sets up the scene
+     * Fades out loading screen when the 3D scene is ready
+     * @returns {void}
      */
-    initViewer() {
+    fadeLoading() {
 
-        // Get initial layer values from DOM and URL params
-        const initialValues = this.getInitialLayerValues();
+        // Get the loading screen element from DOM
+        const loadingScreen = document.getElementById('loading-screen');
 
-        // Ensure first model load reflects URL/default layers even before swatch events fire
-        this.modelState.queryString = this.buildQueryString(initialValues);
+        // If the loading screen element is not found, exit
+        if (!loadingScreen) return;
 
-        // Determine texture path based on plugin URL or fallback to default path
-        const texPath = TM3DPlugin?.url ? TM3DPlugin.url + 'assets/models/textures/' : '/wp-content/plugins/tm-three-viewer/assets/models/textures/';
+
+        // Add fade-out class
+        loadingScreen.classList.add('fade-out');
         
-        // Collect texture URLs from the layer keys only.
-        // secondcolourname is metadata for the base layer name, not a texture file.
-        const textureKeys = Object.keys(initialValues).filter(key => key !== 'secondcolourname');
-        
-        // Preload textures for the initial layer values
-        const textureURLsByKey = {};
-        textureKeys.forEach(key => {
-            const imageName = initialValues?.[key];
-            if (imageName) {
-                textureURLsByKey[key] = texPath + imageName + '.jpg' + (TM3DPlugin?.version ? `?v=${TM3DPlugin.version}` : '');
+        // Listen for transition end to remove the loading screen from DOM
+        loadingScreen.addEventListener('transitionend', function handler(e) {
+            if (e.propertyName === 'opacity') {
+                loadingScreen.remove();
             }
         });
 
-        // Preload textures and initialize the scene once all textures are loaded
-        this.preloadTextures(Object.values(textureURLsByKey))
-            .then(texturesByUrl => {
-                this.preloadedTextures = {};
-                for (const [key, url] of Object.entries(textureURLsByKey)) {
-                    this.preloadedTextures[key] = texturesByUrl[url];
-                }
-                // Initialize scene and related components once
-                if (!this.viewer.scene) {
-                    this.initScene();
-                    this.initRenderer();
-                    this.initLights();
-                    this.initShadowMapViewers();
-                    this.initControls();
-                    this.loadGround();
-                    window.addEventListener('resize', () => this.onResize());
-                    if (!this.runtime.isAnimating) {
-                        this.runtime.isAnimating = true;
-                        this.animate();
-                    }
-                }
-                this.loadModel();
-                this.fadeLoading();
-            })
-            .catch(err => {
-                console.warn('Failed to preload one or more images:', err);
-
-                if (!this.viewer.scene) {
-                    this.initScene();
-                    this.initRenderer();
-                    this.initLights();
-                    this.initShadowMapViewers();
-                    this.initControls();
-                    this.loadGround();
-                    window.addEventListener('resize', () => this.onResize());
-                    if (!this.runtime.isAnimating) {
-                        this.runtime.isAnimating = true;
-                        this.animate();
-                    }
-                }
-                this.loadModel();
-                this.fadeLoading();
-            });
+        // Safety fallback in case transitionend doesn't fire
+        setTimeout(() => {
+            if (document.body.contains(loadingScreen)) {
+                loadingScreen.remove();
+            }
+        }, 3000);
     }
-
 }
