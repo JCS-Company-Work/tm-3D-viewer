@@ -223,6 +223,6 @@ export default class Configurator {
 window.addEventListener('DOMContentLoaded', () => {
 
     const configurator = new Configurator();
-    const viewer = configurator.viewer;  
+    //const viewer = configurator.viewer;  
     
 });

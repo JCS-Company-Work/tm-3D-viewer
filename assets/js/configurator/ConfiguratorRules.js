@@ -1,5 +1,3 @@
-import ProductState from './ConfiguratorState.js';
-
 export default class ProductRules {
 
     constructor(state) {
@@ -31,7 +29,7 @@ export default class ProductRules {
 
         // Get available options for the selected product type and top colour
         const availableOptions = this.state.colourOptions?.[productType]?.colour_options || {};
-        console.log('Available options for product type', productType, ':', availableOptions);
+
         // If top colour is multi-word, convert spaces to underscores to match keys in colourOptions
         const formattedTopColour = topColour.toLowerCase().trim().replace(/\s+/g, '_');
 
@@ -77,9 +75,6 @@ export default class ProductRules {
      * @param {string} topColour - The name of the selected top colour swatch 
      */
     setColourOptions = (topColour) => {
-
-        // If top colour is multi-word, convert spaces to underscores to match keys in colourOptions
-        const formattedTopColour = topColour.toLowerCase().trim().replace(/\s+/g, '_');
 
         // Set available bases and edges based on the swatch name
         this.state.availableOptions = this.getAvailableOptions(topColour);
