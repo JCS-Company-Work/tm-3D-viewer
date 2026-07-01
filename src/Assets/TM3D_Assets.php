@@ -25,10 +25,6 @@
 
             // List of script handles that should be treated as modules
             $modules = [
-                // 'tm-three-viewer',
-                // 'tm-product-state',
-                // 'tm-product-rules',
-                // 'tm-product-ui',
                 'tm-configurator'
             ];
 

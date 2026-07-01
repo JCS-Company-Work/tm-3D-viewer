@@ -239,7 +239,7 @@
 
             // Get first model from the models array
             $first_model = reset(self::$models[$collection]) ?? [];
-error_log('test : ' . print_r($first_model, true)); // Log the first model for debugging
+
             // Check if default colour options exist for the first model
             if (empty($first_model['default_colour_options'])) {
                 return [];
@@ -281,7 +281,7 @@ error_log('test : ' . print_r($first_model, true)); // Log the first model for d
                     break;
                 }
             }
-error_log('combined_arr : ' . print_r($combined_arr, true)); // Log the combined array for debugging
+
             // Return the combined array of default values
             return $combined_arr;
 
@@ -295,6 +295,12 @@ error_log('combined_arr : ' . print_r($combined_arr, true)); // Log the combined
         public static function getProductModels()
 
         {
+
+            // Check for cached data and return if it exists
+            $cached = get_transient('tm3d_product_models');
+            if (is_array($cached)) {
+                return $cached;
+            }
 
             // Get all products that have the ACF field 'acf_3d_model_name'
             // and are not in the 'swatch' or 'swatch-colour' categories
@@ -376,6 +382,9 @@ error_log('combined_arr : ' . print_r($combined_arr, true)); // Log the combined
                 wp_reset_postdata();
 
             endif;
+
+            // Cache the products by collection for 30 days
+            set_transient('tm3d_product_models', $products_by_collection, 2592000);
 
             // Return the array of field values
             return $products_by_collection;
