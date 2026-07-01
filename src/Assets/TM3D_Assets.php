@@ -25,10 +25,10 @@
 
             // List of script handles that should be treated as modules
             $modules = [
-                'tm-three-viewer',
-                'tm-product-state',
-                'tm-product-rules',
-                'tm-product-ui',
+                // 'tm-three-viewer',
+                // 'tm-product-state',
+                // 'tm-product-rules',
+                // 'tm-product-ui',
                 'tm-configurator'
             ];
 
@@ -56,35 +56,8 @@
             // Enqueue GSAP for animations
             wp_enqueue_script(
                 'gsap',
-                TM3D_URL . 'assets/js/gsap.min.js',
+                TM3D_URL . 'assets/js/gsap/gsap.min.js',
                 [],
-                TM3D_VERSION,
-                true
-            );
-
-            // Enqueue the ProductState script, which manages the state of the product configuration
-            wp_enqueue_script(
-                'tm-product-state',
-                TM3D_URL . 'assets/js/ProductState.js',
-                [],
-                TM3D_VERSION,
-                true
-            );
-            
-            // Enqueue the ProductUI script, which manages the user interface for the product configuration
-            wp_enqueue_script(
-                'tm-product-ui',
-                TM3D_URL . 'assets/js/ProductUI.js',
-                [],
-                TM3D_VERSION,
-                true
-            );
-
-            // Enqueue the ProductRules script, which contains the logic for determining available options based on the selected top colour
-            wp_enqueue_script(
-                'tm-product-rules',
-                TM3D_URL . 'assets/js/ProductRules.js',
-                ['tm-product-state'],
                 TM3D_VERSION,
                 true
             );
@@ -93,15 +66,6 @@
             wp_enqueue_script(
                 'tm-configurator',
                 TM3D_URL . 'assets/js/Configurator.js',
-                ['tm-product-rules'],
-                TM3D_VERSION,
-                true
-            );
-
-            // Enqueue the main ProductViewer script, which initializes and manages the 3D viewer
-            wp_enqueue_script(
-                'tm-three-viewer',
-                TM3D_URL . 'assets/js/ProductViewer.js',
                 [],
                 TM3D_VERSION,
                 true
@@ -109,7 +73,7 @@
 
             // Localize the script to pass PHP data to JavaScript, including colour options, version, and URL
             wp_localize_script(
-                'tm-three-viewer',
+                'tm-configurator',
                 'TM3DPlugin',
                 [
                     'data' => $data ?? [],

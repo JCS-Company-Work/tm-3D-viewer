@@ -1,4 +1,4 @@
-import ProductState from './ProductState.js';
+import ProductState from './ConfiguratorState.js';
 
 export default class ProductRules {
 

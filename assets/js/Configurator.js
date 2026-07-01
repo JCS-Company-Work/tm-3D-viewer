@@ -1,17 +1,17 @@
-import ProductState from './ProductState.js';
-import ProductRules from './ProductRules.js';
-import ProductUI from './ProductUI.js';
-import ProductViewer from './ProductViewer.js';
+import ConfiguratorState from './configurator/ConfiguratorState.js';
+import ConfiguratorRules from './configurator/ConfiguratorRules.js';
+import ConfiguratorUI from './configurator/ConfiguratorUI.js';
+import Viewer3D from './configurator/Viewer3D.js';
 
 export default class Configurator {
 
     constructor() {
 
-        // Init Product State, ProductRules, ProductUI, and ProductViewer
-        this.state = new ProductState();
-        this.rules = new ProductRules(this.state);
-        this.ui = new ProductUI(this.state);
-        this.viewer = new ProductViewer('#obj3dviewer');
+        // Init Configurator State, ConfiguratorRules, ConfiguratorUI, and 3D Viewer instances
+        this.state = new ConfiguratorState();
+        this.rules = new ConfiguratorRules(this.state);
+        this.ui = new ConfiguratorUI(this.state);
+        this.viewer = new Viewer3D('#obj3dviewer');
 
         // Load colour options from global data if available
         this.state.colourOptions = window.TM3DPlugin?.data?.product_data || {};
