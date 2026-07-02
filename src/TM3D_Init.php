@@ -15,6 +15,7 @@
             $modules = [
                 \TmThreeViewer\Assets\TM3D_Assets::class,
                 \TmThreeViewer\Model\TM3D_Model::class,
+                \TmThreeViewer\ColourOptions\TM3D_ColourOptions::class,
             ];
 
             // Initialize each module by calling its init method if it exists

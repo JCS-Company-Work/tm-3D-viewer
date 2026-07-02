@@ -19,6 +19,10 @@ define( 'TM3D_VERSION', '1.0.1' );
 // Path to composer also bring in dotenv for environment variable handling
 if (file_exists(TM3D_PATH . 'vendor/autoload.php')) {
     require_once TM3D_PATH . 'vendor/autoload.php';
+
+    // Load environment variables from .env file in root
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+    $dotenv->load();
 }
 
 // Classes required

@@ -2,6 +2,8 @@
 
     namespace TmThreeViewer\Data;
 
+    use TmThreeViewer\ColourOptions\TM3D_ColourOptionsData;
+
     class TM3D_Data {
     
         private static array $models = [];
@@ -18,19 +20,8 @@
             // Get all models and their associated SKU values from the database
             self::$models = self::getProductModels();
 
-            // Retrieve transient safely (NEVER trust WP return types)
-            $cached = get_transient('tmpc_colour_options_all');
-
-            self::$product_data = is_array($cached) ? $cached : [];
-
-            // If empty, trigger rebuild and re-check once
-            if (empty(self::$product_data)) {
-
-                do_action('tmc_rebuild_colour_options');
-
-                $cached = get_transient('tmpc_colour_options_all');
-                self::$product_data = is_array($cached) ? $cached : [];
-            }
+            // Get all product data from transient cache
+            self::$product_data = self::getProductData();
 
             // Check URL for initial product state parameters or defaults
             $initial_state = self::productInitialState();
@@ -40,6 +31,27 @@
                 'product_data' => self::$product_data,
                 'initial_state' => $initial_state,
             ];
+        }
+
+        public static function getProductData() {
+
+            // Retrieve transient
+            $cached = get_transient('tm3d_colour_options_all');
+
+            //If cached data exists, return it
+            // if ($cached !== false) {
+            //     return $cached;
+            // }
+
+            // If no cached data, fetch from Google Sheets (internal call, bypass token)
+            TM3D_ColourOptionsData::getDataFromGoogleSheets(true);
+
+            // Retrieve transient again after fetching from Google Sheets
+            $cached = get_transient('tm3d_colour_options_all');
+
+            // Return the cached data
+            return $cached;
+
         }
 
         /**

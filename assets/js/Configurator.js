@@ -15,7 +15,7 @@ export default class Configurator {
 
         // Load colour options from global data if available
         this.state.colourOptions = window.TM3DPlugin?.data?.product_data || {};
-        
+        console.log('Loaded colour options:', this.state.colourOptions);
         // Initialize the configurator
         this.init();
 
