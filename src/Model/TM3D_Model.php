@@ -146,7 +146,7 @@
             $current_top = implode('_', explode(' ', self::$initial_state['top'] ?? []));
 
             // Get allowed bases for the current top selection from the colour options data
-            $bases_for_current_top = $filtered_colour_options[$current_top]['base'] ?? [];
+            $bases_for_current_top = $filtered_colour_options[$current_top]['base'][self::$initial_state['baseType'] ?? ''] ?? [];
 
             // Get allowed metals for the current top selection from the colour options data
             $metals_for_current_top = $filtered_colour_options[$current_top]['metal'] ?? [];
@@ -304,7 +304,7 @@
                                                     
                                                     <input type="hidden" class="wapf-tf-h" value="0" name="base_colour">
 
-                                                    <?php foreach(self::$product_data['master_values'][$product_type]['base'] as $base) : ?>
+                                                    <?php foreach(self::$product_data['master_values'][$product_type]['base'][self::$initial_state['baseType']] as $base) : ?>
 
                                                         <div class="wapf-swatch wapf-swatch--image wapf-single-select apf-pick-box" style="<?php echo (in_array($base['name'], $bases_for_current_top)) ? 'display: inline;' : 'display: none;'; ?>">
                                                             <label aria-label="<?php echo esc_attr($base['name']); ?>">

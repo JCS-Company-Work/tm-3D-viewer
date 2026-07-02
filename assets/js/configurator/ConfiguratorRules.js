@@ -149,8 +149,22 @@ export default class ProductRules {
             const topColour = document.querySelector('.obj-top-colour input[type="radio"]:checked')?.value || '';
             const formattedTopColour = topColour.toLowerCase().trim().replace(/\s+/g, '_');
 
-            // Get the list of available options for the selected top colour and product type
-            const availableList = this.state.colourOptions?.[productType]?.colour_options?.[formattedTopColour]?.[key] ?? [];
+            let availableList = '';
+
+            if(className === 'base') {
+
+                const sku = document.getElementById('obj3dviewer').getAttribute('item-name') || '';
+    
+                const baseType = sku.includes('wood') ? 'wood' : 'tile';
+    
+                // Get the list of available options for the selected top colour and product type
+                availableList = this.state.colourOptions?.[productType]?.colour_options?.[formattedTopColour]?.[key]?.[baseType] ?? [];
+
+            } else {
+
+                availableList = this.state.colourOptions?.[productType]?.colour_options?.[formattedTopColour]?.[key] ?? [];
+            }
+console.log(`Available options for ${key} with top colour "${topColour}" and product type "${productType}":`, availableList);
 
             // If there are no available options for this group, skip to next iteration
             if (availableList.length === 0) {

@@ -33,6 +33,11 @@
             ];
         }
 
+        /**
+         * Get product data from transient cache or fetch from Google Sheets if not cached
+         *
+         * @return array Returns array of product data from transient cache or fetches from Google Sheets if not cached
+         */
         public static function getProductData() {
 
             // Retrieve transient
@@ -51,6 +56,103 @@
 
             // Return the cached data
             return $cached;
+
+        }
+
+        /**
+         * Get all product models from database via WP_Query
+         *
+         * @return array Assoc array of product models with IDs, titles, SKUs, model sizes, and default colour options
+         */
+        public static function getProductModels()
+
+        {
+
+            // Check for cached data and return if it exists
+            $cached = get_transient('tm3d_product_models');
+            if (is_array($cached)) {
+                return $cached;
+            }
+
+            // Get all products that have the ACF field 'acf_3d_model_name'
+            // and are not in the 'swatch' or 'swatch-colour' categories
+            $args = array(
+                'post_type'      => 'product',
+                'posts_per_page' => -1,
+                'tax_query'      => [
+                    [
+                        'taxonomy' => 'product_cat',
+                        'field'    => 'slug',
+                        'terms'    => [
+                            'swatch',
+                            'swatch-colour'
+                        ],
+                        'operator' => 'NOT IN',
+                    ],
+                ],
+                'meta_query'     => array(
+                    array(
+                        'key'     => 'acf_3d_model_name',
+                        'compare' => 'EXISTS',
+                    ),
+                ),
+            );
+
+            // Execute the query
+            $query = new \WP_Query($args);
+
+            // array to hold products by collection
+            $products_by_collection = [];
+
+            // Loop through the posts and get the required field values
+            if ( $query->have_posts() ) :
+
+                while ( $query->have_posts() ) : $query->the_post();
+
+                    // Initialize an array to hold the field values
+                    $field_values = [];
+
+                    // Get the ID
+                    $id = get_the_ID();
+
+                    $collection = self::determineProductCollection($id);
+
+                    // Add the product to the collection array if collection not null, otherwise skip it
+                    if ($collection) {
+
+                        // Get the required field values for the product
+                        $field_values[$id] = [
+                            'id'           => $id,
+                            'product_type' => self::get_product_type($id),
+                            'title'        => get_the_title($id),
+                            'url'          => get_the_post_thumbnail_url($id, 'thumbnail'),
+                            'sku'          => get_field('acf_3d_model_name', $id),
+                            'model_sizes'  => get_post_meta($id, '_tmpa_model_size', true),
+                        ];
+
+                        // Get default colour options
+                        $colour_option_keys = ['_tmpa_top_colour', '_tmpa_base_colour', '_tmpa_metal_colour'];
+
+                        foreach ($colour_option_keys as $key) {
+                            $field_values[$id]['default_colour_options'][$key] = get_post_meta($id, $key, true);
+                        }
+
+                        // Add the product to the collection array
+                        $products_by_collection[$collection][$id] = $field_values[$id];
+
+                    }
+
+                endwhile;
+
+                wp_reset_postdata();
+
+            endif;
+
+            // Cache the products by collection for 30 days
+            set_transient('tm3d_product_models', $products_by_collection, 2592000);
+
+            // Return the array of field values
+            return $products_by_collection;
 
         }
 
@@ -101,6 +203,9 @@
                 // Hyphenate the colour parameter for comparison
                 $hyphenated_colour = str_replace(' ', '_', strtolower($params['colour']));
 
+                // Determine base type based on product category (wood or tile)
+                $baseType = has_term(199, 'product_cat', $params['id'] ?? '') ? 'wood' : 'tile';
+
                 // If hyphenated colour is not in the array of valid colours return default options
                 if (!in_array($hyphenated_colour, $valid_colours, true)) {
                     return self::return_defaults();
@@ -113,7 +218,7 @@
 
                 // If no base is uspplied, default to first valid base as we have a top colour and a product type
                 if (!self::isValidOption($product_type, 'base', $params)) {
-                    $params['base'] = self::$product_data[$product_type]['colour_options'][$hyphenated_colour]['base'][0] ?? '';
+                    $params['base'] = self::$product_data[$product_type]['colour_options'][$hyphenated_colour]['base'][$baseType][0] ?? '';
                 }
 
                 // If this is an edge product check for metal
@@ -138,10 +243,11 @@
                 // Retrieve the model by ID to get additional information like SKU and model sizes
                 $model = self::get_model_by_id((int) ($final_values['id'] ?? null));
 
-                // Add product type, sku, model sizes, and default model size to the final values
+                // Add product type, sku, model sizes, base type and default model size to the final values
                 $final_values['product_type'] = $product_type;
                 $final_values['sku'] = $model['sku'] ?? '';
                 $final_values['model_sizes'] = $model['model_sizes'] ?? [];
+                $final_values['baseType'] = $baseType;
 
                 foreach ($final_values['model_sizes'] ?? [] as $size) {
                     if (!empty($size['is_default'])) {
@@ -280,6 +386,9 @@
 
             // Add product type to the combined array
             $combined_arr['product_type'] = self::get_product_type($first_model['id'] ?? '');
+
+            // Determine if product is in wood category (id 199)
+            $combined_arr['baseType'] = has_term(199, 'product_cat', $first_model['id'] ?? '') ? 'wood' : 'tile';
             
             // Add model sizes to the combined array
             $combined_arr['model_sizes'] = $first_model['model_sizes'] ?? [];
@@ -296,110 +405,6 @@
 
             // Return the combined array of default values
             return $combined_arr;
-
-        }
-
-        /**
-         * Get all product models from database via WP_Query
-         *
-         * @return array Assoc array of product models with IDs, titles, SKUs, model sizes, and default colour options
-         */
-        public static function getProductModels()
-
-        {
-
-            // Check for cached data and return if it exists
-            $cached = get_transient('tm3d_product_models');
-            if (is_array($cached)) {
-                return $cached;
-            }
-
-            // Get all products that have the ACF field 'acf_3d_model_name'
-            // and are not in the 'swatch' or 'swatch-colour' categories
-            $args = array(
-                'post_type'      => 'product',
-                'posts_per_page' => -1,
-                'tax_query'      => [
-                    [
-                        'taxonomy' => 'product_cat',
-                        'field'    => 'slug',
-                        'terms'    => [
-                            'swatch',
-                            'swatch-colour'
-                        ],
-                        'operator' => 'NOT IN',
-                    ],
-                ],
-                'meta_query'     => array(
-                    array(
-                        'key'     => 'acf_3d_model_name',
-                        'compare' => 'EXISTS',
-                    ),
-                ),
-            );
-
-            // Execute the query
-            $query = new \WP_Query($args);
-
-            // array to hold products by collection
-            $products_by_collection = [];
-
-            // Loop through the posts and get the required field values
-            if ( $query->have_posts() ) :
-
-                while ( $query->have_posts() ) : $query->the_post();
-
-                    // Initialize an array to hold the field values
-                    $field_values = [];
-
-                    // Get the ID
-                    $id = get_the_ID();
-
-                    $collection = self::determineProductCollection($id);
-
-                    // Add the product to the collection array if collection not null, otherwise skip it
-                    if ($collection) {
-
-                        // Get the ID
-                        $field_values[$id]['id'] = $id;
-
-                        // Get the product type
-                        $field_values[$id]['product_type'] = self::get_product_type($id);
-
-                        // Get the title
-                        $field_values[$id]['title'] = get_the_title();
-
-                        // Get product thumbnail URL
-                        $field_values[$id]['url'] = get_the_post_thumbnail_url($id, 'thumbnail');
-
-                        // Get the sku
-                        $field_values[$id]['sku'] = get_field('acf_3d_model_name');
-
-                        // Get model sizes
-                        $field_values[$id]['model_sizes'] = get_post_meta($id, '_tmpa_model_size', true);
-
-                        // Get default colour options
-                        $colour_option_keys = ['_tmpa_top_colour', '_tmpa_base_colour', '_tmpa_metal_colour'];
-
-                        foreach ($colour_option_keys as $key) {
-                            $field_values[$id]['default_colour_options'][$key] = get_post_meta($id, $key, true);
-                        }
-
-                        $products_by_collection[$collection][$id] = $field_values[$id];
-
-                    }
-
-                endwhile;
-
-                wp_reset_postdata();
-
-            endif;
-
-            // Cache the products by collection for 30 days
-            set_transient('tm3d_product_models', $products_by_collection, 2592000);
-
-            // Return the array of field values
-            return $products_by_collection;
 
         }
 

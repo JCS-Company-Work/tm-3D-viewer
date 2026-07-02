@@ -50,7 +50,7 @@
             ]);
 
             $valueRanges = $response->getValueRanges();
-error_log('Fetched ' . count($valueRanges) . ' value ranges from Google Sheets.');
+
             // Process the fetched data to build the colour options 
             self::formatColourData($valueRanges);
 
@@ -109,15 +109,18 @@ error_log('Fetched ' . count($valueRanges) . ' value ranges from Google Sheets.'
                         $top_type_raw = trim($row['Top Type']);
                         $top_type = strtolower(str_replace('/', '-', $top_type_raw));
 
-                        // Sort base colours alphabetically correct order in popout drawers
-                        sort($baseColours);
+                        // Sub divide bases into wood and tile bases depending on whether the product is in the wood category (id 199)
+                        $baseColours = self::filterDataByWoodCategory($baseColours);
+
+                        // // Sort base colours alphabetically correct order in popout drawers
+                        // sort($baseColours);
 
                         // Build data array, base colours first as these are present for all top types
                         $data = [
                             'top' => $top_colour[0],
                             'base' => $baseColours
                         ];
-
+error_log('Filtered Base Colours: ' . print_r($data, true));
                         // If top type is 'slim/edge', create data for both 'slim' and 'edge' keys with the same data
                         if (strtolower(str_replace(' ', '', $top_type_raw)) === 'slim/edge') {
 
@@ -163,6 +166,43 @@ error_log('Fetched ' . count($valueRanges) . ' value ranges from Google Sheets.'
             }
 
         }
+
+        /**
+         * Filter bases depending on whether product is in wood category (id 199)
+         *
+         * @param array $bases Array of base colour names to filter
+         * @return array Returns the filtered product data with either wood or tile bases and corresponding colour options based on the product category
+         */
+        private static function filterDataByWoodCategory($bases) {
+
+            // Define wood base options
+            $woodBaseOptions = [
+                'american walnut',
+                'jet black'
+            ];
+
+            // Loop over bases and assign type
+            $categorizedBases = [
+                'wood' => [],
+                'tile' => []
+            ];
+
+            foreach ($bases as $base) {
+                if(in_array($base, $woodBaseOptions, true)) {
+                    $categorizedBases['wood'][] = $base;
+                } else {
+                    $categorizedBases['tile'][] = $base;
+                }
+            }
+
+            // Sort the categorized bases alphabetically for easier use in popout drawers
+            foreach ($categorizedBases as &$baseGroup) {
+                sort($baseGroup);
+            }
+
+            // Return the categorized bases array
+            return $categorizedBases;
+        }   
 
         /**
          * Extract data from colour options Google Sheets tab
@@ -436,7 +476,10 @@ error_log('Fetched ' . count($valueRanges) . ' value ranges from Google Sheets.'
 
                     // Loop through values and replace with array containing name, ID and URL for image
                     foreach($colours as &$colour) {
+
+                        // Ensure colour is in the correct format (lowercase, trimmed) to match the map keys
                         $colour = trim(strtolower($colour));
+                        
                         if (isset($map[$colour])) {
 
                             // Set attachment ID from map
@@ -451,15 +494,31 @@ error_log('Fetched ' . count($valueRanges) . ' value ranges from Google Sheets.'
                                 ? wp_get_attachment_image_src($attachment_id, $item['thumb_size'], false)
                                 : false;
 
-                            // Replace value with array containing name, ID and URL for image and colour as key
-                            $newColours[$colour] = [
-                                'name' => $colour,
-                                'slug' => str_replace(' ', '_', $colour),
-                                'id'   => $attachment_id,
-                                'sample_id' => $map[$colour]['sample_id'] ?? null,
-                                'url'  => $image[0] ?? null,
-                                'thumb_url' => $thumb[0] ?? null,
-                            ];
+                            // If item is base check if wood or tile and add to the correct array in the result
+                            if($item['key'] === 'base') {
+                                $baseType = in_array($colour, ['american walnut', 'jet black']) ? 'wood' : 'tile';
+                                $newColours[$baseType][$colour] = [
+                                    'name' => $colour,
+                                    'slug' => str_replace(' ', '_', $colour),
+                                    'id'   => $attachment_id,
+                                    'sample_id' => $map[$colour]['sample_id'] ?? null,
+                                    'url'  => $image[0] ?? null,
+                                    'thumb_url' => $thumb[0] ?? null,
+                                ];
+
+                            } else {
+                                
+                                // Replace value with array containing name, ID and URL for image and colour as key
+                                $newColours[$colour] = [
+                                    'name' => $colour,
+                                    'slug' => str_replace(' ', '_', $colour),
+                                    'id'   => $attachment_id,
+                                    'sample_id' => $map[$colour]['sample_id'] ?? null,
+                                    'url'  => $image[0] ?? null,
+                                    'thumb_url' => $thumb[0] ?? null,
+                                ];
+
+                            }
                         }
                     }
 
