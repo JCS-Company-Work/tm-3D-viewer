@@ -14,21 +14,8 @@
 
         public static function getColourOptionsRaw($type = 'standard') {
 
-            // Get product ID from URL query (if provided) to determine product type for fetching relevant options
-            // $product_id = isset($_GET['product_id']) ? intval($_GET['product_id']) : 0;
-            
-            // // Get product object (if product_id provided) to determine type for fetching relevant options
-            // $product = $product_id ? wc_get_product($product_id) : wc_get_product();
-
-            // // Determine product type to fetch relevant options
-            // $product_type = self::get_product_type($product);
-
-            // Set cache key based on type
-            $cache_key = $type === 'master' ? 'tmpc_colour_options_' . $product_type . '_master' : 'tmpc_colour_options_' . $product_type;
-
-            // $cached = get_transient($cache_key);
             //If cached data exists, return it
-            $cached = get_transient($cache_key);
+            $cached = get_transient('tmpc_colour_options_all');
             if ($cached !== false) {
                 return $cached;
             }
@@ -37,7 +24,7 @@
             TM3D_ColourOptionsData::getDataFromGoogleSheets(true);
 
             // Return the freshly cached data
-            return get_transient($cache_key);
+            return get_transient('tmpc_colour_options_all');
         }
 
         /**

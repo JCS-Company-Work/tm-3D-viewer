@@ -10,6 +10,31 @@ export default class ProductRules {
 
         // Store reference to ProductState instance
         this.state = state;
+
+        // Initialize product type
+        this.productData = {};
+
+        // Store product data based on the selected product in the 3D viewer
+        this.storeProductData();
+    }
+
+    storeProductData() {
+
+        // Check if top colour is valid for the selected product type
+        this.productData.topColour = document.querySelector('.obj-top-colour input[type="radio"]:checked')?.value || '';
+
+        // If top colour is multi-word, convert spaces to underscores to match keys in colourOptions
+        this.productData.formattedTopColour = this.productData.topColour.toLowerCase().trim().replace(/\s+/g, '_');
+
+        // Get product type from current selected product type and set globally available
+        this.productData.type = document.querySelector('.obj-product-type input[type="radio"]:checked')?.getAttribute('data-product-type') || '';
+
+        // Get the SKU of the selected product from the 3D viewer element
+        const sku = document.getElementById('obj3dviewer').getAttribute('item-name') || '';
+
+        // Determine the base type based on whether the SKU includes 'wood' or not
+        this.productData.baseType = sku.includes('wood') ? 'wood' : 'tile';
+
     }
 
     // ===================== Option Logic & State Management ===================== //
@@ -21,25 +46,16 @@ export default class ProductRules {
      */
     resetForProductType() {
 
-        // Get product type from current selected product type
-        const productType = document.querySelector('.obj-product-type input[type="radio"]:checked')?.getAttribute('data-product-type') || '';
-
-        // Check if top colour is valid for the selected product type
-        const topColour = document.querySelector('.obj-top-colour input[type="radio"]:checked')?.value || '';
-
         // Get available options for the selected product type and top colour
-        const availableOptions = this.state.colourOptions?.[productType]?.colour_options || {};
-
-        // If top colour is multi-word, convert spaces to underscores to match keys in colourOptions
-        const formattedTopColour = topColour.toLowerCase().trim().replace(/\s+/g, '_');
+        const availableOptions = this.state.colourOptions?.[this.productData.type]?.colour_options || {};
 
         // Check if the top colour is valid for the selected product type
-        const isTopColourValid = availableOptions.hasOwnProperty(formattedTopColour);
+        const isTopColourValid = availableOptions.hasOwnProperty(this.productData.formattedTopColour);
 
         // If the top colour is valid, set the available options for base and edge groups
         if (isTopColourValid) {
 
-            return topColour;
+            return this.productData.topColour;
             
         } else {
 
@@ -72,18 +88,11 @@ export default class ProductRules {
     /**
      * Set available options for base and edge groups based on the selected top colour swatch.
      * The mapping of available options for each swatch is defined in the colourOptions object.
-     * @param {string} topColour - The name of the selected top colour swatch 
      */
-    setColourOptions = (topColour) => {
-
-        // Set available bases and edges based on the swatch name
-        this.state.availableOptions = this.getAvailableOptions(topColour);
-
-		// Convert available options object to an array of [optionType, optionsArray] pairs for easier iteration
-        const availableOptionsArr = Object.entries(this.state.availableOptions || {});
+    setColourOptions = () => {
 
         // Loop over available options and update the UI accordingly (e.g., show/hide or enable/disable options)
-        this.showHideOptions(availableOptionsArr);
+        this.showHideOptions();
 
         // Finalize selected options after availability has been applied in the UI
         this.setSelectedOptions();
@@ -97,14 +106,8 @@ export default class ProductRules {
      */
     getAvailableOptions(topColour) {
 
-         // If top colour is multi-word, convert spaces to underscores to match keys in colourOptions
-        const formattedTopColour = topColour.toLowerCase().trim().replace(/\s+/g, '_');
-
-        // Get product type from current selected product type
-        const productType = document.querySelector('.obj-product-type input[type="radio"]:checked')?.getAttribute('data-product-type') || '';
-
         // Return available options for the selected top colour and product type, or an empty object if not found
-        return this.state.colourOptions?.[productType]?.colour_options?.[formattedTopColour] || {};
+        return this.state.colourOptions?.[this.productData.type]?.colour_options?.[this.productData.formattedTopColour] || {};
 
     }
 
@@ -142,36 +145,15 @@ export default class ProductRules {
             // Extract the value of the checked option and format it for comparison
             const value = input.value.toLowerCase().trim();
 
-            // Get product type from current selected product type
-            const productType = document.querySelector('.obj-product-type input[type="radio"]:checked')?.getAttribute('data-product-type') || '';
-
-            // Check if top colour is valid for the selected product type
-            const topColour = document.querySelector('.obj-top-colour input[type="radio"]:checked')?.value || '';
-            const formattedTopColour = topColour.toLowerCase().trim().replace(/\s+/g, '_');
-
-            let availableList = '';
-
-            if(className === 'base') {
-
-                const sku = document.getElementById('obj3dviewer').getAttribute('item-name') || '';
-    
-                const baseType = sku.includes('wood') ? 'wood' : 'tile';
-    
-                // Get the list of available options for the selected top colour and product type
-                availableList = this.state.colourOptions?.[productType]?.colour_options?.[formattedTopColour]?.[key]?.[baseType] ?? [];
-
-            } else {
-
-                availableList = this.state.colourOptions?.[productType]?.colour_options?.[formattedTopColour]?.[key] ?? [];
-            }
-console.log(`Available options for ${key} with top colour "${topColour}" and product type "${productType}":`, availableList);
+            // Check if the currently checked option is in the list of available options
+            const availableList = this.availableList(key, className, value);
 
             // If there are no available options for this group, skip to next iteration
             if (availableList.length === 0) {
                 return;
             }
 
-            // Check if the currently checked option is in the list of available options
+            // Check if the currently checked option is available for the selected top colour
             const isAvailable = availableList.includes(value);
 
             // Set up selectedOption variable to hold final value
@@ -216,16 +198,16 @@ console.log(`Available options for ${key} with top colour "${topColour}" and pro
                 filename: imgFileName,
                 swatchName: selectedLabel
             };
-
+            
         });
 
-        // Also include the selected top colour as part of the defaults sent in the custom event
-        const topColour = document.querySelector('.obj-top-colour input[type="radio"]:checked');
+        // Also include the selected top colour as part of the defaults
+        const topColour = this.productData.topColour;
 
         if (!topColour) return;
 
         // Extract the image file name from the selected top colour swatch to use as the default option value
-        const topSwatchImage = topColour.parentElement?.querySelector('.swatch');
+        const topSwatchImage = document.querySelector(`.obj-top-colour input[type="radio"][value="${topColour}"]`)?.parentElement?.querySelector('.swatch');
         const topFileName = this.getImageFileName(topSwatchImage);
 
         if (!topFileName) return;
@@ -233,9 +215,29 @@ console.log(`Available options for ${key} with top colour "${topColour}" and pro
         // Add the selected top colour to the selectedOptions object
         this.state.selectedOptions.top = { 
             filename: topFileName,
-            swatchName: topColour.value.trim()
+            swatchName: topColour.trim()
         };
 
+    }
+
+    /**
+     * 
+     * @param {string} optionType - The type of option (e.g., 'base', 'top-colour').
+     * @param {string} className - The CSS class name of the option group.
+     * @returns {Array} - The list of available options for the given option type and class name.
+     */
+    availableList(optionType, className) {
+
+        // If the option type is 'base', determine the base type (wood or tile) based on the SKU of the selected product
+        if(className === 'base') {
+
+            // Get the list of available options for the selected top colour and product type
+            return this.state.colourOptions?.[this.productData.type]?.colour_options?.[this.productData.formattedTopColour]?.[optionType]?.[this.productData.baseType] ?? [];
+
+        } 
+
+        // For other option types (e.g., 'metal'), return the available options for the selected top colour and product type
+        return this.state.colourOptions?.[this.productData.type]?.colour_options?.[this.productData.formattedTopColour]?.[optionType] ?? [];
     }
 
     /**
@@ -245,20 +247,18 @@ console.log(`Available options for ${key} with top colour "${topColour}" and pro
      */
     setMetalEdgeState(className, swatchesGroup) {
 
-        // If current product includes metals activate the metal edge veneer option in the UI, otherwise deactivate it
-        if(className === 'metal-edge-veneer') {
+        // Only apply for metals
+        if(className !== 'metal-edge-veneer') return;
 
-            const metalOption = document.getElementById('option-metal-edge-veneer');
+        const metalOption = document.getElementById('option-metal-edge-veneer');
 
-            if(swatchesGroup && swatchesGroup.querySelectorAll('.wapf-swatch').length > 0) {
-                metalOption.classList.remove('inactive');
-            } else {
-                metalOption.classList.add('inactive');
+        if(swatchesGroup && swatchesGroup.querySelectorAll('.wapf-swatch').length > 0) {
+            metalOption.classList.remove('inactive');
+        } else {
+            metalOption.classList.add('inactive');
 
-                // Remove any veneer value from the URL if the metal edge veneer option is deactivated
-                this.removeParamFromURL('veneer');
-
-            }
+            // Remove any veneer value from the URL if the metal edge veneer option is deactivated
+            this.removeParamFromURL('veneer');
 
         }
 
@@ -292,9 +292,14 @@ console.log(`Available options for ${key} with top colour "${topColour}" and pro
 
     /**
      * Show or hide options in the UI based on the available options for the selected top colour.
-     * @param {Array} availableOptionsArr - An array of [optionType, optionsArray] pairs representing available options.
      */
-    showHideOptions = (availableOptionsArr) => {
+    showHideOptions = () => {
+
+        // Set available bases and edges based on the swatch name
+        this.state.availableOptions = this.getAvailableOptions(this.productData.topColour);
+
+		// Convert available options object to an array of [optionType, optionsArray] pairs for easier iteration
+        const availableOptionsArr = Object.entries(this.state.availableOptions || {});
 
         // Loop over available options and update the UI accordingly (e.g., show/hide or enable/disable options)
         availableOptionsArr.forEach(([optionType, optionsArray]) => {
@@ -305,13 +310,19 @@ console.log(`Available options for ${key} with top colour "${topColour}" and pro
             // Find non-matching options in DOM and disable them
             const optionElements = document.querySelectorAll(`.obj-${layerType} .wapf-swatch`);
 
+            // Base options are grouped into tile/wood, so flatten them for comparison
+            const available =
+                optionType === 'base'
+                    ? [...optionsArray.tile, ...optionsArray.wood]
+                    : optionsArray;
+console.log(`Available options for ${optionType}:`, available);
             optionElements.forEach(el => {
 
                 // Extract option name from label and compare with available options
                 const label = el.querySelector('label').textContent.toLowerCase().trim();
 
 				// Show/hide options
-                el.style.display = optionsArray.includes(label) ? 'inline' : 'none';
+                el.style.display = available.includes(label) ? 'inline' : 'none';
 
             });
 

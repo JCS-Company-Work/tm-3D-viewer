@@ -66,14 +66,17 @@ export default class Configurator {
             // Handle the selection based on the group type
             if (group.matches('.obj-product-type')) {
 
+                // Update globally stored product data
+                this.rules.storeProductData();
+
                 // Rebuild the UI for the new product type
                 this.ui.buildUI(input.id, input.getAttribute('data-product-type'), input.closest('.collection-wrapper').getAttribute('data-collection'));
 
                 // Reset the top colour selection for the new product type
-                const topColour = this.rules.resetForProductType();
+                this.rules.resetForProductType();
                 
                 // Update the available colour options based on the selected top colour
-                this.rules.setColourOptions(topColour);
+                this.rules.setColourOptions();
 
                 // Update the viewer with the selected product model
                 const sku = input.dataset.sku;
@@ -90,6 +93,9 @@ export default class Configurator {
 
             // Top Colour
             if (group.matches('.obj-top-colour')) {
+
+                // Update globally stored product data
+                this.rules.storeProductData();
 
                 // Update the colour options for the top colour
                 this.rules.setColourOptions(swatchName);

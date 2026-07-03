@@ -4,6 +4,7 @@
 
     use TmThreeViewer\Assets\TM3D_Assets;
     use TmThreeViewer\Data\TM3D_Data;
+    use TmThreeViewer\CurrentStatus\TM3D_CurrentStatus;
 
     class TM3D_Model
 
@@ -166,6 +167,7 @@
             
             
                 <div class="configurator last-opened-none" id="configurator">
+                    
                     <!-- 3D viewer -->
                     <div id="obj3dviewer" item-name="<?php echo esc_attr(self::$initial_state['sku']); ?>" data-version="<?php echo esc_attr(TMPC_VERSION); ?>">
                         <section id="loading-screen"><div id="loader"></div></section>
@@ -402,20 +404,18 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        </div>
                                     </div>
                                 </div>
-                        
-                            <?php if (get_field('acf_3d_model_name')) : // if model exists show end of 3d viewer ?>
-                
-                            </div><!-- end config-selectors -->
-                        </div><!-- end playground -->
+                            </div>
+                        </div><!-- end config-selectors -->
+                    </div><!-- end playground -->
                     <div id="configMask" class="config-mask"></div>
-                </div><!-- end configurator -->	
-            
-            <?php endif;
-            
-            return ob_get_clean();
+                </div>
+
+                <!-- Current status section -->
+                <?php echo TM3D_CurrentStatus::render_current_status(); ?>
+
+                <?php return ob_get_clean();
             
         }
 
