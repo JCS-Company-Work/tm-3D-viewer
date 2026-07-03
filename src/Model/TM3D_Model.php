@@ -316,6 +316,7 @@
                                                                     class="wapf-input"
                                                                     value="<?php echo esc_attr($base['name']); ?>"
                                                                     <?php echo (self::$initial_state['base'] === $base['name']) ? 'checked' : ''; ?>
+                                                                    data-sample-id="<?php echo esc_attr($base['sample_id'] ?? ''); ?>"
                                                                 >
                                                                 <div>
                                                                     <img class="swatch" src="<?php echo esc_url($base['url'] ?? ''); ?>" alt="<?php echo esc_attr($base['name']); ?>" />
@@ -351,6 +352,7 @@
                                                                                 id="<?php echo esc_attr($metal['sample_id'] ?? ''); ?>"
                                                                                 value="<?php echo esc_attr($metal['name']); ?>"
                                                                                 <?php echo (self::$initial_state['veneer'] === $metal['name']) ? 'checked' : ''; ?>
+                                                                                data-sample-id="<?php echo esc_attr($metal['sample_id'] ?? ''); ?>"
                                                                             >
                                                                             <div>
                                                                                 <img class="swatch" src="<?php echo esc_url($metal['url'] ?? ''); ?>" alt="<?php echo esc_attr($metal['name']); ?>" />

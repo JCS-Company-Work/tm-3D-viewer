@@ -3,6 +3,8 @@ import ConfiguratorRules from './configurator/ConfiguratorRules.js';
 import ConfiguratorUI from './configurator/ConfiguratorUI.js';
 import CurrentStatus from './configurator/CurrentStatus.js';
 import Viewer3D from './configurator/Viewer3D.js';
+import SampleAddToCart from './ajax/ajax-add-sample-to-cart.js';
+import ProductAddToCart from './ajax/ajax-add-product-to-cart.js';
 
 export default class Configurator {
 
@@ -14,10 +16,11 @@ export default class Configurator {
         this.ui = new ConfiguratorUI(this.state);
         this.currentStatus = new CurrentStatus(this.state);
         this.viewer = new Viewer3D('#obj3dviewer');
+        this.sampleAddToCart = new SampleAddToCart();
 
         // Load colour options from global data if available
         this.state.colourOptions = window.TM3DPlugin?.data?.product_data || {};
-        console.log('Loaded colour options:', this.state.colourOptions);
+
         // Initialize the configurator
         this.init();
 

@@ -21,7 +21,7 @@ class TM3D_CurrentStatus {
         self::add_current_status($data);
 
         // Call the method to output the add to basket section
-        self::addToBasket();
+        self::addToBasket($data);
 
         // Get the buffered output and return it as a string
         return ob_get_clean();
@@ -219,15 +219,15 @@ class TM3D_CurrentStatus {
 
     /**
      * Render add to basket section
-     *
+     * @param array $data should contain the initial state and selected options for the product.
      * @return void
      */
-    public static function addToBasket() {
+    public static function addToBasket($data) {
 
         ?>
             <div id="product-add-to-cart-section" class="product-add-to-cart-wrapper">
                 <div class="product-add-to-cart-content">
-                    <div class="add-to-basket-price text-center"><p>£6600.00</p></div>
+                    <div class="add-to-basket-price text-center"><p>£<?php echo number_format($data['initial_state']['price'], 2); ?></p></div>
                     <p class="text-small"><b>Handcrafted to your specification in 4-6 weeks</b></p>
                 </div>
                 <div class="product-add-to-cart-buttons">
@@ -236,13 +236,13 @@ class TM3D_CurrentStatus {
                     <form class="cart" action="https://store.tailormade.uk/product/monarch-solid-curve-wood/" method="post" enctype="multipart/form-data">
                         <div class="add-to-cart-button-wrapper">
                             <div class="quantity">
-                                <label class="screen-reader-text" for="quantity_6a47a70704569">Monarch Solid - Curve quantity</label>
+                                <label class="screen-reader-text" for="quantity_6a47a70704569"><?php echo $data['initial_state']['title']; ?></label>
                                 <input type="number" id="quantity_6a47a70704569" class="input-text qty text" name="quantity" value="1" aria-label="Product quantity" min="1" step="1" placeholder="" inputmode="numeric" autocomplete="off"><div class="quantity-nav"><div class="quantity-button quantity-up">+</div><div class="quantity-button quantity-down">-</div></div>
                             </div>
 
-                            <button type="submit" name="add-to-cart" value="5574" class="single_add_to_cart_button button alt">Add to basket</button>
+                            <button type="submit" name="add-to-cart" value="<?php echo $data['initial_state']['id']; ?>" class="single_add_to_cart_button button alt">Add to basket</button>
 
-                            <input type="hidden" name="gtm4wp_product_data" value="{&quot;internal_id&quot;:5574,&quot;item_id&quot;:5574,&quot;item_name&quot;:&quot;Monarch Solid - Curve&quot;,&quot;sku&quot;:&quot;tt12-solid-20-bp101-wood&quot;,&quot;price&quot;:5640,&quot;stocklevel&quot;:null,&quot;stockstatus&quot;:&quot;instock&quot;,&quot;google_business_vertical&quot;:&quot;retail&quot;,&quot;item_category&quot;:&quot;Luxury Dining Tables&quot;,&quot;id&quot;:5574}">
+                            <input type="hidden" name="gtm4wp_product_data" value="{&quot;internal_id&quot;:<?php echo $data['initial_state']['id']; ?>,&quot;item_id&quot;:<?php echo $data['initial_state']['id']; ?>,&quot;item_name&quot;:&quot;<?php echo $data['initial_state']['title']; ?>&quot;,&quot;sku&quot;:&quot;<?php echo $data['initial_state']['sku']; ?>&quot;,&quot;price&quot;:<?php echo $data['initial_state']['price']; ?>,&quot;stocklevel&quot;:<?php echo $data['initial_state']['stocklevel']; ?>,&quot;stockstatus&quot;:&quot;<?php echo $data['initial_state']['stockstatus']; ?>&quot;,&quot;google_business_vertical&quot;:&quot;<?php echo $data['initial_state']['google_business_vertical']; ?>&quot;,&quot;item_category&quot;:&quot;<?php echo $data['initial_state']['item_category']; ?>&quot;,&quot;id&quot;:<?php echo $data['initial_state']['id']; ?>}">
                         </div>	
                     </form>
 
