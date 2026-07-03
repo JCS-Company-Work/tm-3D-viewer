@@ -70,9 +70,9 @@
 
             // Check for cached data and return if it exists
             $cached = get_transient('tm3d_product_models');
-            if (is_array($cached)) {
-                return $cached;
-            }
+            // if (is_array($cached)) {
+            //     return $cached;
+            // }
 
             // Get all products that have the ACF field 'acf_3d_model_name'
             // and are not in the 'swatch' or 'swatch-colour' categories
@@ -117,6 +117,9 @@
 
                     $collection = self::determineProductCollection($id);
 
+                    // Get product price
+                    $product = wc_get_product($id);
+
                     // Add the product to the collection array if collection not null, otherwise skip it
                     if ($collection) {
 
@@ -125,6 +128,7 @@
                             'id'           => $id,
                             'product_type' => self::get_product_type($id),
                             'title'        => get_the_title($id),
+                            'price'        => $product ? $product->get_price() : '',
                             'url'          => get_the_post_thumbnail_url($id, 'thumbnail'),
                             'sku'          => get_field('acf_3d_model_name', $id),
                             'model_sizes'  => get_post_meta($id, '_tmpa_model_size', true),
@@ -192,6 +196,7 @@
                 return self::return_defaults();
             }
 
+            // If we have id and colour we have enough to create a valid initial state and product
             if (!empty($params['id']) && !empty($params['colour'])) {
 
                 // Determine product type from ID
@@ -231,10 +236,20 @@
 
                 }
 
+                // Swatch colours array
+                $swatch_colours = [
+                    'top' => $params['colour'] ?? '',
+                    'base' => $params['base'] ?? '',
+                    'metal' => $params['veneer'] ?? '',
+                ];
+
+                // Add swatch urls for selected layers
+                $swatchUrls = self::swatchUrls($product_type, $swatch_colours, $baseType);
+
                 // Filter the parameters to only include the relevant keys
                 $final_values = array_intersect_key($params, array_flip($keys));
-
-                // The frontend expects "top" instead of "colour"
+                
+                // Alter keys as frontend expects 'top' instead of 'colour'
                 if (isset($final_values['colour'])) {
                     $final_values['top'] = strtolower($final_values['colour']);
                     unset($final_values['colour']);
@@ -244,10 +259,15 @@
                 $model = self::get_model_by_id((int) ($final_values['id'] ?? null));
 
                 // Add product type, sku, model sizes, base type and default model size to the final values
-                $final_values['product_type'] = $product_type;
-                $final_values['sku'] = $model['sku'] ?? '';
-                $final_values['model_sizes'] = $model['model_sizes'] ?? [];
-                $final_values['baseType'] = $baseType;
+                $final_values += [
+                    'title' => $model['title'] ?? '',
+                    'product_type' => $product_type,
+                    'price' => $model['price'] ?? '',
+                    'sku' => $model['sku'] ?? '',
+                    'model_sizes' => $model['model_sizes'] ?? [],
+                    'baseType' => $baseType,
+                    'swatch_urls' => $swatchUrls,
+                ];
 
                 foreach ($final_values['model_sizes'] ?? [] as $size) {
                     if (!empty($size['is_default'])) {
@@ -261,6 +281,102 @@
             } else {
                 return self::return_defaults();
             }
+
+        }
+
+        /**
+         * Return default colour options for the first model in the models array
+         *
+         * @return array default post meta values
+         */
+        public static function return_defaults() {
+
+            // Product collection
+            $collection = array_key_first(self::$models) ?? '';
+
+            // Get first model from the models array
+            $first_model = reset(self::$models[$collection]) ?? [];
+
+            // Check if default colour options exist for the first model
+            if (empty($first_model['default_colour_options'])) {
+                return [];
+            }
+
+            // Extract default values from first model
+            $defaults = $first_model['default_colour_options'];
+
+            // Remove '_tmpa_' and '_colour' from the keys to match parameter names
+            $formatted_keys = array_map(
+                fn($key) => str_replace(['_tmpa_', '_colour'], '', $key),
+                array_keys($defaults)
+            );
+
+            // Determine product type from first model ID
+            $product_type = self::get_product_type($first_model['id'] ?? '');
+
+            // Combine formatted keys with their values
+            $combined_arr = array_combine($formatted_keys, array_values($defaults));
+
+            // Deterine swatch thumb urls
+            $swatch_urls = self::swatchUrls($product_type, $defaults, $combined_arr['baseType'] ?? '');
+
+            foreach ($first_model['model_sizes'] ?? [] as $size) {
+                if (!empty($size['is_default'])) {
+                    $combined_arr['default_model_size'] = $size['label'] ?? '';
+                    break;
+                }
+            }
+
+            // Add product type, sku, model sizes, base type and swatch urls to the combined array
+            $combined_arr += [
+                'id' => $first_model['id'] ?? '',
+                'title' => $first_model['title'] ?? '',
+                'price' => $first_model['price'] ?? '',
+                'sku' => $first_model['sku'] ?? '',
+                'product_type' => $product_type,
+                'baseType' => has_term(199, 'product_cat', $first_model['id'] ?? '') ? 'wood' : 'tile',
+                'model_sizes' => $first_model['model_sizes'] ?? [],
+                'default_model_size' => $combined_arr['default_model_size'] ?? '',
+                'swatch_urls' => $swatch_urls,
+            ];
+
+            // Return the combined array of default values
+            return $combined_arr;
+
+        }
+
+        /**
+         * Add swatch urls for selected layers based on product type, colour, and base type
+         *
+         * @param string $product_type
+         * @param array $colours
+         * @param string $baseType
+         * @return array
+         */
+        public static function swatchUrls($product_type, $colours, $baseType) {
+
+            $swatch_urls = [];
+
+            // Add swatch urls for selected layers
+            foreach ($colours as $key => $colour) {
+
+                switch ($key) {
+                    case 'top':
+                        $swatch_urls[$key] = self::$product_data[$product_type]['colour_options'][$colour][$key]['thumb_url'] ?? '';
+                        break;
+                    case 'base':
+                        $swatch_urls[$key] = self::$product_data['master_values'][$product_type]['base'][$baseType][$colour]['thumb_url'] ?? '';
+                        break;
+                    case 'metal':
+                        $swatch_urls[$key] = self::$product_data['master_values'][$product_type]['metal'][$colour]['thumb_url'] ?? '';
+                        break;
+                    default:
+                        $swatch_urls[$key] = '';
+                }
+
+            }
+
+            return $swatch_urls;
 
         }
 
@@ -342,69 +458,6 @@
 
             // Check if the provided option is in the valid options array
             return in_array($params[$option_type], $valid_options);
-
-        }
-
-        /**
-         * Return default colour options for the first model in the models array
-         *
-         * @return array default post meta values
-         */
-        public static function return_defaults() {
-
-            // Product collection
-            $collection = array_key_first(self::$models) ?? '';
-
-            // Get first model from the models array
-            $first_model = reset(self::$models[$collection]) ?? [];
-
-            // Check if default colour options exist for the first model
-            if (empty($first_model['default_colour_options'])) {
-                return [];
-            }
-
-            // Extract default values from first model
-            $defaults = $first_model['default_colour_options'];
-
-            // Remove '_tmpa_' and '_colour' from the keys to match parameter names
-            $formatted_keys = array_map(
-                fn($key) => str_replace(['_tmpa_', '_colour'], '', $key),
-                array_keys($defaults)
-            );
-
-            // Combine formatted keys with their values
-            $combined_arr = array_combine($formatted_keys, array_values($defaults));
-
-            // Add the first model's ID to the combined array
-            $combined_arr['id'] = $first_model['id'] ?? '';
-
-            // Add title to the combined array
-            $combined_arr['title'] = $first_model['title'] ?? '';
-
-            // Add the first model's SKU to the combined array
-            $combined_arr['sku'] = $first_model['sku'] ?? '';
-
-            // Add product type to the combined array
-            $combined_arr['product_type'] = self::get_product_type($first_model['id'] ?? '');
-
-            // Determine if product is in wood category (id 199)
-            $combined_arr['baseType'] = has_term(199, 'product_cat', $first_model['id'] ?? '') ? 'wood' : 'tile';
-            
-            // Add model sizes to the combined array
-            $combined_arr['model_sizes'] = $first_model['model_sizes'] ?? [];
-
-            // Determine default model size and add it to the combined array
-            $combined_arr['default_model_size'] = '';
-
-            foreach ($combined_arr['model_sizes'] ?? [] as $size) {
-                if (!empty($size['is_default'])) {
-                    $combined_arr['default_model_size'] = $size['label'] ?? '';
-                    break;
-                }
-            }
-
-            // Return the combined array of default values
-            return $combined_arr;
 
         }
 

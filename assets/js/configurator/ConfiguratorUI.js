@@ -1,4 +1,4 @@
-export default class ProductUI {
+export default class ConfiguratorUI {
 
     constructor(state) {
 

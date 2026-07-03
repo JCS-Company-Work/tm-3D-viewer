@@ -1,6 +1,7 @@
 import ConfiguratorState from './configurator/ConfiguratorState.js';
 import ConfiguratorRules from './configurator/ConfiguratorRules.js';
 import ConfiguratorUI from './configurator/ConfiguratorUI.js';
+import CurrentStatus from './configurator/CurrentStatus.js';
 import Viewer3D from './configurator/Viewer3D.js';
 
 export default class Configurator {
@@ -11,6 +12,7 @@ export default class Configurator {
         this.state = new ConfiguratorState();
         this.rules = new ConfiguratorRules(this.state);
         this.ui = new ConfiguratorUI(this.state);
+        this.currentStatus = new CurrentStatus(this.state);
         this.viewer = new Viewer3D('#obj3dviewer');
 
         // Load colour options from global data if available

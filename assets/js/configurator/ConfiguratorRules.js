@@ -1,4 +1,4 @@
-export default class ProductRules {
+export default class ConfiguratorRules {
 
     constructor(state) {
 

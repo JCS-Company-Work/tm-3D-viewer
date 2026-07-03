@@ -3,22 +3,25 @@
 namespace TmThreeViewer\CurrentStatus;
 
 use TmThreeViewer\Images\TM3D_Images;
-use TmThreeViewer\Data\TM3D_Data;
 
 class TM3D_CurrentStatus {
 
     /**
      * Render the current status markup as a string so it can be added to shortcode output.
      *
+     * @param array $data The data to be used for rendering the current status.
      * @return string
      */
-    public static function render_current_status(): string {
+    public static function render_current_status($data): string {
 
         // Start output buffering to capture the HTML output
         ob_start();
 
         // Call the method to output the current status section
-        self::add_current_status();
+        self::add_current_status($data);
+
+        // Call the method to output the add to basket section
+        self::addToBasket();
 
         // Get the buffered output and return it as a string
         return ob_get_clean();
@@ -27,12 +30,10 @@ class TM3D_CurrentStatus {
 
     /**
      * Render the current status section on the product page, showing the selected options and a preview image
-     *
+     * @param array $data should contain the initial state and selected options for the product.
      * @return void
      */
-    public static function add_current_status() {
-
-        $product_data = TM3D_Data::getProductData();
+    public static function add_current_status($data) {
 
         ?>
 
@@ -43,9 +44,9 @@ class TM3D_CurrentStatus {
                         <div class="qrcode"></div>
                         <div class="current-status-swatches">
                             <div class="status-price-container">
-                                <p class="status-title bold"><?php echo get_the_title(); ?></p> 
-                                <p class="status-price" data-ex-vat-price-base="<?php echo $product_data['selected']['price'] ?? ''; ?>"></p>
-                                <?php $top_colour = $product_data['selected']['top']['name'] ?? ''; ?>
+                                <p class="status-title bold"><?php echo $data['initial_state']['title'] ?? ''; ?></p> 
+                                <p class="status-price" data-ex-vat-price-base="<?php echo $data['initial_state']['price'] ?? ''; ?>"></p>
+                                <?php $top_colour = $data['initial_state']['top'] ?? ''; ?>
 
                                 <?php if($top_colour) : ?>
 
@@ -54,7 +55,7 @@ class TM3D_CurrentStatus {
 
                                 <?php endif; ?>
 
-                                <?php $base_colour = $product_data['selected']['base']['name'] ?? ''; ?>
+                                <?php $base_colour = $data['initial_state']['base'] ?? ''; ?>
 
                                 <?php if($base_colour) : ?>
 
@@ -63,7 +64,7 @@ class TM3D_CurrentStatus {
 
                                 <?php endif; ?>
 
-                                <?php $metal_colour = $product_data['selected']['metal']['name'] ?? ''; ?>
+                                <?php $metal_colour = $data['initial_state']['metal'] ?? ''; ?>
 
                                 <?php if($metal_colour) : ?>
 
@@ -78,8 +79,8 @@ class TM3D_CurrentStatus {
                                 <div class="status-layer-images">
                                     <div class="obj-top-colour status-layer">
                                         <div class="status-layer-img">
-                                            <a href="<?php echo esc_url($product_data['selected']['top']['url']); ?>"
-                                                data-pswp-src="<?php echo esc_url($product_data['selected']['top']['url']); ?>"
+                                            <a href="<?php echo esc_url($data['initial_state']['swatch_urls']['top']); ?>"
+                                                data-pswp-src="<?php echo esc_url($data['initial_state']['swatch_urls']['top']); ?>"
                                                 data-pswp-width="700"
                                                 data-pswp-height="1200"
                                                 data-pswp-gallery="woocommerce-gallery">
@@ -89,7 +90,7 @@ class TM3D_CurrentStatus {
                                                 fetchpriority="low"
                                                 width="150"
                                                 height="150"
-                                                src="<?php echo esc_url($product_data['selected']['top']['thumb_url']); ?>"
+                                                src="<?php echo esc_url($data['initial_state']['swatch_urls']['top']); ?>"
                                                 alt="Top Colour image swatch"
                                                 >
                                             </a>
@@ -100,8 +101,8 @@ class TM3D_CurrentStatus {
 
                                     <div class="obj-base status-layer">
                                         <div class="status-layer-img">
-                                            <a href="<?php echo esc_url($product_data['selected']['base']['url']); ?>"
-                                                data-pswp-src="<?php echo esc_url($product_data['selected']['base']['url']); ?>"
+                                            <a href="<?php echo esc_url($data['initial_state']['swatch_urls']['base']); ?>"
+                                                data-pswp-src="<?php echo esc_url($data['initial_state']['swatch_urls']['base']); ?>"
                                                 data-pswp-width="700"
                                                 data-pswp-height="1200"
                                                 data-pswp-gallery="woocommerce-gallery">
@@ -111,7 +112,7 @@ class TM3D_CurrentStatus {
                                                     fetchpriority="low"
                                                     width="150"
                                                     height="150"
-                                                    src="<?php echo esc_url($product_data['selected']['base']['thumb_url']); ?>"
+                                                    src="<?php echo esc_url($data['initial_state']['swatch_urls']['base']); ?>"
                                                     alt="Base Colour image swatch"
                                                 >
                                             </a>
@@ -120,11 +121,11 @@ class TM3D_CurrentStatus {
                                         <p class="status-layer-colour <?php echo implode('-', explode(' ', $base_colour)); ?>-finish"><?php echo $base_colour; ?></p>
                                     </div>
 
-                                    <?php if (!empty($product_data['selected']['metal']) && !empty($product_data['selected']['metal']['url'])): ?>
+                                    <?php if (!empty($data['selected']['metal']) && !empty($data['selected']['metal']['url'])): ?>
                                     <div class="obj-metal-edge-veneer status-layer">
                                         <div class="status-layer-img">
-                                            <a href="<?php echo esc_url($product_data['selected']['metal']['url']); ?>"
-                                                data-pswp-src="<?php echo esc_url($product_data['selected']['metal']['url']); ?>"
+                                            <a href="<?php echo esc_url($data['selected']['metal']['url']); ?>"
+                                                data-pswp-src="<?php echo esc_url($data['selected']['metal']['url']); ?>"
                                                 data-pswp-width="886"
                                                 data-pswp-height="187"
                                                 data-pswp-gallery="woocommerce-gallery">
@@ -134,7 +135,7 @@ class TM3D_CurrentStatus {
                                                     fetchpriority="low"
                                                     width="150"
                                                     height="150"
-                                                    src="<?php echo esc_url($product_data['selected']['metal']['thumb_url']); ?>"
+                                                    src="<?php echo esc_url($data['selected']['metal']['thumb_url']); ?>"
                                                     alt="Metal Edge Colour image swatch"
                                                 >
                                             </a>
@@ -152,11 +153,11 @@ class TM3D_CurrentStatus {
                                 <div class="swatch-add-message"></div>
                             </div>
                         </div>
-                        <div class="current-status-specification flow">
-                            <?php //self::get_full_tech_specifications(); ?>
+                        <div class="current-status-specification flow" data-current-model-size="<?php echo $data['initial_state']['model'] ? esc_attr($data['initial_state']['model']) : esc_attr($data['initial_state']['default_model_size']); ?>">
+                            <?php self::get_full_tech_specifications($data); ?>
                             <div class="status-image h-100 w-100 flex-col-center">
 
-                                <?php $images = TM3D_Images::getCompositeImages(); ?>
+                                <?php $images = TM3D_Images::getCompositeImages($data['initial_state']['id']); ?>
                                 <?php if ($images): ?>
                                     <a href="<?php echo esc_url($images['1600'] ?? $images['700']); ?>"
                                         data-pswp-src="<?php echo esc_url($images['1600'] ?? $images['700']); ?>"
@@ -217,13 +218,71 @@ class TM3D_CurrentStatus {
     }
 
     /**
+     * Render add to basket section
+     *
+     * @return void
+     */
+    public static function addToBasket() {
+
+        ?>
+            <div id="product-add-to-cart-section" class="product-add-to-cart-wrapper">
+                <div class="product-add-to-cart-content">
+                    <div class="add-to-basket-price text-center"><p>£6600.00</p></div>
+                    <p class="text-small"><b>Handcrafted to your specification in 4-6 weeks</b></p>
+                </div>
+                <div class="product-add-to-cart-buttons">
+
+            
+                    <form class="cart" action="https://store.tailormade.uk/product/monarch-solid-curve-wood/" method="post" enctype="multipart/form-data">
+                        <div class="add-to-cart-button-wrapper">
+                            <div class="quantity">
+                                <label class="screen-reader-text" for="quantity_6a47a70704569">Monarch Solid - Curve quantity</label>
+                                <input type="number" id="quantity_6a47a70704569" class="input-text qty text" name="quantity" value="1" aria-label="Product quantity" min="1" step="1" placeholder="" inputmode="numeric" autocomplete="off"><div class="quantity-nav"><div class="quantity-button quantity-up">+</div><div class="quantity-button quantity-down">-</div></div>
+                            </div>
+
+                            <button type="submit" name="add-to-cart" value="5574" class="single_add_to_cart_button button alt">Add to basket</button>
+
+                            <input type="hidden" name="gtm4wp_product_data" value="{&quot;internal_id&quot;:5574,&quot;item_id&quot;:5574,&quot;item_name&quot;:&quot;Monarch Solid - Curve&quot;,&quot;sku&quot;:&quot;tt12-solid-20-bp101-wood&quot;,&quot;price&quot;:5640,&quot;stocklevel&quot;:null,&quot;stockstatus&quot;:&quot;instock&quot;,&quot;google_business_vertical&quot;:&quot;retail&quot;,&quot;item_category&quot;:&quot;Luxury Dining Tables&quot;,&quot;id&quot;:5574}">
+                        </div>	
+                    </form>
+
+                        <div class="table-specialist-button">
+                        <a href="#" class="tm-button button-reverse whatsapp-chat-btn">Talk To A Table Specialist</a>
+                        <div class="whatsapp-wrapper">
+                            <p class="text-small m-0 border-0">Not sure what finish will work best?</p>
+                            <img src="/wp-content/uploads/Digital_Glyph_Black_RGB_2026.svg" class="whatsapp-logo" alt="Whatsapp logo">
+                        </div>
+                    </div>
+                </div>
+                <div class="add-to-cart-list-wrapper">
+                    <ul class="add-to-cart-list list-none">
+                        <li>
+                            <i class="fa-light fa-check" aria-hidden="true"></i>
+                            Made to order in the UK
+                        </li>
+                        <li>
+                            <i class="fa-light fa-check" aria-hidden="true"></i>
+                            Samples available
+                        </li>
+                        <li>
+                            <i class="fa-light fa-check" aria-hidden="true"></i>
+                            Design guidance included
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        <?php
+
+    }
+
+    /**
      * Fetch technical specification data for product from WooCommerce
      *
      * @return void
      */
-    public static function get_full_tech_specifications() {
+    public static function get_full_tech_specifications($data) {
 
-        $product = wc_get_product( get_the_ID() );
+        $product = wc_get_product( $data['initial_state']['id'] );
         $specifications = $product ? $product->get_attribute( 'specifications' ) : '';
         $dimensions = '';
         $full_spec_html = '';

@@ -120,7 +120,7 @@
                             'top' => $top_colour[0],
                             'base' => $baseColours
                         ];
-error_log('Filtered Base Colours: ' . print_r($data, true));
+
                         // If top type is 'slim/edge', create data for both 'slim' and 'edge' keys with the same data
                         if (strtolower(str_replace(' ', '', $top_type_raw)) === 'slim/edge') {
 

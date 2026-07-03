@@ -129,8 +129,7 @@
                 return '<div class="configurator-error">No models found</div>';
             }
 
-            $first_id = self::$initial_state['id'] ?? array_key_first(self::$models);
-            $product  = wc_get_product($first_id);
+            $product  = wc_get_product(self::$initial_state['id']);
 
             // Guard against invalid product
             if (!$product || !is_object($product) || !method_exists($product, 'get_id')) {
@@ -413,7 +412,7 @@
                 </div>
 
                 <!-- Current status section -->
-                <?php echo TM3D_CurrentStatus::render_current_status(); ?>
+                <?php echo TM3D_CurrentStatus::render_current_status(self::$data); ?>
 
                 <?php return ob_get_clean();
             

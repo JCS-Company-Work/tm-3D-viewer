@@ -6,7 +6,11 @@
 
     class TM3D_Images {
 
-        
+        /**
+         * Cached composite image URLs
+         *
+         * @var array|null
+         */
         protected static $composite_images = null;
 
         /**
@@ -32,9 +36,9 @@
          *
          * @return array|null Array of image URLs (700, 1600, 400) or null
          */
-        public static function getCompositeImages() {
+        public static function getCompositeImages($id = null) {
             if (self::$composite_images === null) {
-                self::serveImagesOnPageLoad();
+                self::serveImagesOnPageLoad($id);
             }
             return self::$composite_images;
         }
@@ -45,15 +49,12 @@
          *
          * @return void
          */
-        public static function serveImagesOnPageLoad() {
+        public static function serveImagesOnPageLoad($id = null) {
 
             // If images exist already, serve cached version
             if (self::$composite_images !== null) {
                 return self::$composite_images;
             }
-
-            // Only run on product pages
-            if (!is_product()) return null;
 
             // Check if Imagick is available
             if (!class_exists('Imagick')) {
@@ -62,7 +63,7 @@
             }
 
             // Get product from WooCommerce
-            $product = wc_get_product(get_the_ID());
+            $product = wc_get_product($id);
             if (!$product) return null;
 
             // Get valid colour combinations for current product and options
