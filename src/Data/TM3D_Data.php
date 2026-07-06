@@ -130,6 +130,7 @@
                             'title'        => get_the_title($id),
                             'price'        => $product ? $product->get_price() : '',
                             'url'          => get_the_post_thumbnail_url($id, 'thumbnail'),
+                            'permalink'    => get_permalink($id),
                             'sku'          => get_field('acf_3d_model_name', $id),
                             'model_sizes'  => get_post_meta($id, '_tmpa_model_size', true),
                         ];
@@ -267,6 +268,7 @@
                     'model_sizes' => $model['model_sizes'] ?? [],
                     'baseType' => $baseType,
                     'swatch_urls' => $swatchUrls,
+                    'permalink' => $model['permalink'] ?? '',
                 ];
 
                 foreach ($final_values['model_sizes'] ?? [] as $size) {
@@ -338,6 +340,7 @@
                 'model_sizes' => $first_model['model_sizes'] ?? [],
                 'default_model_size' => $combined_arr['default_model_size'] ?? '',
                 'swatch_urls' => $swatch_urls,
+                'permalink' => $first_model['permalink'] ?? '',
             ];
 
             // Return the combined array of default values

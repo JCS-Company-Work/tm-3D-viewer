@@ -233,7 +233,7 @@ class TM3D_CurrentStatus {
                 <div class="product-add-to-cart-buttons">
 
             
-                    <form class="cart" action="https://store.tailormade.uk/product/monarch-solid-curve-wood/" method="post" enctype="multipart/form-data">
+                    <form class="cart" action="<?php echo $data['initial_state']['permalink']; ?>" method="post" enctype="multipart/form-data">
                         <div class="add-to-cart-button-wrapper">
                             <div class="quantity">
                                 <label class="screen-reader-text" for="quantity_6a47a70704569"><?php echo $data['initial_state']['title']; ?></label>

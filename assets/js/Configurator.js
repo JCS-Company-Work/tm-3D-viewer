@@ -5,19 +5,23 @@ import CurrentStatus from './configurator/CurrentStatus.js';
 import Viewer3D from './configurator/Viewer3D.js';
 import SampleAddToCart from './ajax/ajax-add-sample-to-cart.js';
 import ProductAddToCart from './ajax/ajax-add-product-to-cart.js';
+import PDFGenerator from './pdf/BuildPDF.js';
+import Gallery from './gallery/Gallery.js';
 
 export default class Configurator {
 
     constructor() {
 
-        // Init Configurator State, ConfiguratorRules, ConfiguratorUI, and 3D Viewer instances
+        // Init Configurator State, ConfiguratorRules, ConfiguratorUI, PDF and 3D Viewer instances
         this.state = new ConfiguratorState();
         this.rules = new ConfiguratorRules(this.state);
         this.ui = new ConfiguratorUI(this.state);
         this.currentStatus = new CurrentStatus(this.state);
         this.viewer = new Viewer3D('#obj3dviewer');
         this.sampleAddToCart = new SampleAddToCart();
-
+        this.pdfGenerator = new PDFGenerator();
+        this.gallery = new Gallery();
+        
         // Load colour options from global data if available
         this.state.colourOptions = window.TM3DPlugin?.data?.product_data || {};
 
