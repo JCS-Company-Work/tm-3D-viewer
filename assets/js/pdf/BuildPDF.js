@@ -410,8 +410,3 @@ export default class BuildPDF {
     }
 
 }
-
-// Initialize the class when the DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    new BuildPDF();
-});

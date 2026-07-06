@@ -1,3 +1,5 @@
+import QRCode from '../qrcode/qrcode.min.js';
+
 /**
  * CurrentStatus class manages the dynamic updates to the "Current Status" recap section of the product configurator.
  * It listens for changes in the model selection, swatch options, price updates. 
@@ -6,9 +8,6 @@
 export default class CurrentStatus {
     
     constructor() {
-
-        // Store content area
-        //this.contentArea = document.querySelector('.content-area');
 
         // Model dropdown element
         this.modelSelect = document.querySelector('.obj-model select');
@@ -27,6 +26,7 @@ export default class CurrentStatus {
         this.updateSpecText();
         this.updateDimensions();
         this.showHideFullSpec();
+        this.createQR();
         this.chatOnWhatsApp();
         this.shareToWhatsapp();
     }
@@ -48,8 +48,47 @@ export default class CurrentStatus {
             this.determineModel();
             this.updateSpecText();
             this.updateDimensions();
+            this.createQR();
 
         })
+
+    }
+
+    /**
+     * Generate a QR code based on the current page URL (without tvembed parameter) and display it in the .qrcode element.
+     * @returns {void}
+     */
+    createQR = () => {
+
+        // Select QR code container from DOM
+        const qrElement = document.querySelector(".qrcode");
+
+        // Create a new QRCode instance with error correction level 'H'
+        const qr = new QRCode(0, 'H');
+
+        // Extract current url from form action
+        const form = document.querySelector('form.cart');
+
+        // Create a new URL object from the form's action attribute
+        const url = new URL(form?.action);
+
+        // Add all params from the current page's query string to the URL object
+        const currentParams = new URLSearchParams(window.location.search);
+        currentParams.forEach((value, key) => {
+            url.searchParams.set(key, value);
+        });
+
+        // Remove the 'tvembed' parameter from the URL to ensure it's not included in the QR code
+        url.searchParams.delete('tvembed');
+
+        // Add the URL to the QR code and generate it
+        qr.addData(url.toString());
+        
+        // Add the modified URL to the QR code and generate it
+        qr.make();
+        
+        // Generate the QR code as an SVG and insert it into the .qrcode element
+        qrElement.innerHTML = qr.createSvgTag({});
 
     }
 
@@ -297,8 +336,3 @@ export default class CurrentStatus {
         });
     }
 }
-
-// Initialize once, after DOM ready
-document.addEventListener("DOMContentLoaded", () => {
-    new CurrentStatus();
-});

@@ -19,9 +19,10 @@ export default class Configurator {
         this.currentStatus = new CurrentStatus(this.state);
         this.viewer = new Viewer3D('#obj3dviewer');
         this.sampleAddToCart = new SampleAddToCart();
+        this.productAddToCart = new ProductAddToCart();
         this.pdfGenerator = new PDFGenerator();
         this.gallery = new Gallery();
-        
+
         // Load colour options from global data if available
         this.state.colourOptions = window.TM3DPlugin?.data?.product_data || {};
 
@@ -91,6 +92,9 @@ export default class Configurator {
                 const sku = input.dataset.sku;
                 this.viewer.setProductModel(sku);
 
+                // Update QR code
+                this.currentStatus.createQR();
+
                 // Update the viewer with the selected product type
                 const id = input.id;
                 const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions, id);
@@ -109,6 +113,9 @@ export default class Configurator {
                 // Update the colour options for the top colour
                 this.rules.setColourOptions(swatchName);
 
+                // Update QR code
+                this.currentStatus.createQR();
+
                 // Update the viewer with the selected top colour
                 const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions);
 
@@ -122,6 +129,9 @@ export default class Configurator {
 
                 // Update the selected options for base or metal
                 this.rules.setSelectedOptions();
+
+                // Update QR code
+                this.currentStatus.createQR();
 
                 // Update the viewer with the selected options
                 const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions);
@@ -188,6 +198,7 @@ export default class Configurator {
 
     /**
      * Keep the URL in sync with current page selections before deferred 3D init.
+     * @returns {void}
      */
     syncInitialURLState() {
 

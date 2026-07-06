@@ -217,7 +217,3 @@ export default class ProductAddToCart {
         }
     }
 }
-
-document.addEventListener('DOMContentLoaded', function () {
-    new ProductAddToCart();
-});
