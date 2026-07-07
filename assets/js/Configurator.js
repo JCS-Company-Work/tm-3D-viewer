@@ -76,21 +76,33 @@ export default class Configurator {
             // Handle the selection based on the group type
             if (group.matches('.obj-product-type')) {
 
-                // Update globally stored product data
-                this.rules.storeProductData();
+                // Update the selected product type in the state
+                const productType = input.getAttribute('data-product-type');
 
                 // Rebuild the UI for the new product type
-                this.ui.buildUI(input.id, input.getAttribute('data-product-type'), input.closest('.collection-wrapper').getAttribute('data-collection'));
+                this.ui.buildUI(input.id, productType, input.closest('.collection-wrapper').getAttribute('data-collection'));
+
+                // Update the viewer with the selected product model so downstream rules use the active SKU.
+                const sku = input.dataset.sku;
+                this.viewer.setProductModel(sku);
+
+                // Sync rule context from the rebuilt DOM before resolving default options.
+                this.rules.setProductData();
 
                 // Reset the top colour selection for the new product type
-                this.rules.resetForProductType();
+                this.rules.resetForProductType(productType);
+
+                // Sync again in case resetForProductType auto-selected a fallback top colour.
+                this.rules.setProductData();
                 
                 // Update the available colour options based on the selected top colour
                 this.rules.setColourOptions();
 
-                // Update the viewer with the selected product model
-                const sku = input.dataset.sku;
-                this.viewer.setProductModel(sku);
+                // Update the current status layer with the selected product type
+                this.currentStatus.updateStatusLayer(input);
+
+                 // Schedule a single composite image update regardless of which layer changed
+                this.currentStatus.scheduleCompositeUpdate();
 
                 // Update QR code
                 this.currentStatus.createQR();
@@ -108,10 +120,16 @@ export default class Configurator {
             if (group.matches('.obj-top-colour')) {
 
                 // Update globally stored product data
-                this.rules.storeProductData();
+                this.rules.setProductData();
 
-                // Update the colour options for the top colour
-                this.rules.setColourOptions(swatchName);
+                // Update the colour options for the selected top colour
+                this.rules.setColourOptions();
+
+                // Update the current status layer with the selected product type
+                this.currentStatus.updateStatusLayer(input);
+
+                 // Schedule a single composite image update regardless of which layer changed
+                this.currentStatus.scheduleCompositeUpdate();
 
                 // Update QR code
                 this.currentStatus.createQR();
@@ -129,6 +147,12 @@ export default class Configurator {
 
                 // Update the selected options for base or metal
                 this.rules.setSelectedOptions();
+
+                // Update the current status layer with the selected options
+                this.currentStatus.updateStatusLayer(input);
+
+                // Schedule a single composite image update regardless of which layer changed
+                this.currentStatus.scheduleCompositeUpdate();
 
                 // Update QR code
                 this.currentStatus.createQR();

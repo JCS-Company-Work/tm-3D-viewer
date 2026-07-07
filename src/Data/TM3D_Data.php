@@ -316,11 +316,14 @@
             // Determine product type from first model ID
             $product_type = self::get_product_type($first_model['id'] ?? '');
 
+            // Determine base type based on product category (wood or tile)
+            $base_type = has_term(199, 'product_cat', $first_model['id'] ?? '') ? 'wood' : 'tile';
+
             // Combine formatted keys with their values
             $combined_arr = array_combine($formatted_keys, array_values($defaults));
 
-            // Deterine swatch thumb urls
-            $swatch_urls = self::swatchUrls($product_type, $defaults, $combined_arr['baseType'] ?? '');
+            // Determine swatch thumb urls from normalized default keys (top/base/metal)
+            $swatch_urls = self::swatchUrls($product_type, $combined_arr, $base_type);
 
             foreach ($first_model['model_sizes'] ?? [] as $size) {
                 if (!empty($size['is_default'])) {
@@ -336,7 +339,7 @@
                 'price' => $first_model['price'] ?? '',
                 'sku' => $first_model['sku'] ?? '',
                 'product_type' => $product_type,
-                'baseType' => has_term(199, 'product_cat', $first_model['id'] ?? '') ? 'wood' : 'tile',
+                'baseType' => $base_type,
                 'model_sizes' => $first_model['model_sizes'] ?? [],
                 'default_model_size' => $combined_arr['default_model_size'] ?? '',
                 'swatch_urls' => $swatch_urls,

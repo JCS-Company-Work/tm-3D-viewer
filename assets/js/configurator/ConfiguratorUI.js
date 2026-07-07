@@ -51,24 +51,18 @@ export default class ConfiguratorUI {
     buildUI(id, productType, collection) {
 
         // Groups to iterate over for building swatches
-        const groups = {
+        const groups = ['top-colour', 'base', 'metal-edge-veneer'];
 
-            top: 'top-colour',
-            base: 'base',
-			metal: 'metal-edge-veneer'
-
-        }
-
-        Object.entries(groups).forEach(([key, group]) => {
+        groups.forEach(group => {
             
             // Get the currently selected option for the group
             const selected = document.querySelector(`.obj-${group} input[type="radio"]:checked`);
 
-                // Get the data object for the current group and product type
-                const dataObj = this.getUIData(group, productType);
+                // Normalize source data so every group can use the same destructuring shape.
+                const swatchItems = this.getSwatchItems(group, productType);
 
                 // Build the HTML for the swatches based on the group and data object
-                if(dataObj && typeof dataObj === 'object') {
+                if(swatchItems.length) {
 
                     // Build the HTML for the swatches based on the group and data object
                     const groupContainer = document.querySelector(`.obj-${group} .wapf-image-swatch-wrapper`);
@@ -78,10 +72,9 @@ export default class ConfiguratorUI {
                         let html = '';
 
                         // Iterate over the data object to create swatch HTML
-                        for (const item of Object.values(dataObj)) {
-
-                            // Destructure name, id, and url based on the group type
-                            const { name, id, url } = group === 'top-colour' ? item?.top || {} : item || {};
+                        for (const item of swatchItems) {
+                            // Destructure a consistent item shape across groups.
+                            const { name, id, url } = item;
 
                             // Verify data exists before appending HTML
                             if (id) {
@@ -126,6 +119,42 @@ export default class ConfiguratorUI {
         // Update models for the selected product type
         this.updateModels(id, collection);
 
+    }
+
+    /**
+     * Normalize source swatch data into a flat array for consistent rendering.
+     * @param {string} group
+     * @param {string} productType
+     * @returns {Array}
+     */
+    getSwatchItems(group, productType) {
+
+        const dataObj = this.getUIData(group, productType);
+
+        if (!dataObj || typeof dataObj !== 'object') {
+            return [];
+        }
+
+        if (group === 'top-colour') {
+            return Object.values(dataObj)
+                .map(item => item?.top)
+                .filter(Boolean);
+        }
+
+        if (group === 'base') {
+
+            // Merge wood and tile base options into a single array for rendering
+            const woodBases = Object.values(dataObj?.['wood'] || {});
+            const tileBases = Object.values(dataObj?.['tile'] || {});
+
+            return [...woodBases, ...tileBases];
+        }
+
+        if (group === 'metal-edge-veneer') {
+            return Object.values(dataObj || {});
+        }
+
+        return Object.values(dataObj || {});
     }
 
     /**

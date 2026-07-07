@@ -15,10 +15,10 @@ export default class ConfiguratorRules {
         this.productData = {};
 
         // Store product data based on the selected product in the 3D viewer
-        this.storeProductData();
+        this.setProductData();
     }
 
-    storeProductData() {
+    setProductData() {
 
         // Check if top colour is valid for the selected product type
         this.productData.topColour = document.querySelector('.obj-top-colour input[type="radio"]:checked')?.value || '';
@@ -42,22 +42,21 @@ export default class ConfiguratorRules {
     /**
      * Determine the default selections for base and edge groups based on 
      * the selected product type and top colour, and to update the available options in the UI accordingly.
-     * @returns {string} The top colour to be used for the selected product type.
+     * @param {string} productType - The selected product type.
      */
-    resetForProductType() {
+    resetForProductType(productType) {
+
+        // Refresh product data after UI/model changes so option resolution uses current values.
+        this.setProductData();
 
         // Get available options for the selected product type and top colour
-        const availableOptions = this.state.colourOptions?.[this.productData.type]?.colour_options || {};
+        const availableOptions = this.state.colourOptions?.[productType]?.colour_options || {};
 
         // Check if the top colour is valid for the selected product type
         const isTopColourValid = availableOptions.hasOwnProperty(this.productData.formattedTopColour);
 
-        // If the top colour is valid, set the available options for base and edge groups
-        if (isTopColourValid) {
-
-            return this.productData.topColour;
-            
-        } else {
+        // If the top colour is not valid, set the available options for base and edge groups
+        if (!isTopColourValid) {
 
             // Extract the first available top colour for the selected product type
             const firstAvailableColour =
@@ -75,14 +74,15 @@ export default class ConfiguratorRules {
             // If a match is found, check it and return the first available colour
             if (topColourInput) {
                 topColourInput.checked = true;
-                return firstAvailableColour;
+                this.productData.topColour = firstAvailableColour;
+                this.productData.formattedTopColour = firstAvailableColour.toLowerCase().trim().replace(/\s+/g, '_');
             }
 
-            // If no match is found, log a warning and return an empty string
-            console.warn(`No matching input found for top colour "${firstAvailableColour}".`);
-            return '';
+        } 
 
-        }
+        // Set available bases and edges based on the swatch name
+        this.state.availableOptions = this.getAvailableOptions(productType, this.productData.formattedTopColour);
+
     }
 
     /**
@@ -90,6 +90,18 @@ export default class ConfiguratorRules {
      * The mapping of available options for each swatch is defined in the colourOptions object.
      */
     setColourOptions = () => {
+
+        // Keep available options in sync with the latest selected top colour.
+        const rawAvailableOptions = this.getAvailableOptions(
+            this.productData.type,
+            this.productData.formattedTopColour
+        );
+
+        // Normalize structure so downstream UI logic always evaluates base and metal groups.
+        this.state.availableOptions = {
+            base: rawAvailableOptions?.base ?? { tile: [], wood: [] },
+            metal: rawAvailableOptions?.metal ?? []
+        };
 
         // Loop over available options and update the UI accordingly (e.g., show/hide or enable/disable options)
         this.showHideOptions();
@@ -101,13 +113,12 @@ export default class ConfiguratorRules {
 
     /**
      * Get available options for a given top colour.
-     * @param {string} topColour - The name of the selected top colour swatch.
      * @returns {Object} An object containing available options for the selected top colour.
      */
-    getAvailableOptions(topColour) {
+    getAvailableOptions(productType, formattedTopColour) {
 
         // Return available options for the selected top colour and product type, or an empty object if not found
-        return this.state.colourOptions?.[this.productData.type]?.colour_options?.[this.productData.formattedTopColour] || {};
+        return this.state.colourOptions?.[productType]?.colour_options?.[formattedTopColour] || {};
 
     }
 
@@ -133,60 +144,42 @@ export default class ConfiguratorRules {
             // If there are swatches find the currently checked option for this group
             const checkedSwatch = swatchesGroup.querySelector('input[type="radio"]:checked')?.closest('.wapf-swatch');
 
-            // If no checked swatch is found, skip to next iteration
-            if (!checkedSwatch) return;
+            // Normalize available option names for robust comparisons.
+            const availableList = this.availableList(key, className)
+                .map(option => String(option).toLowerCase().trim());
 
-            // If there is a checked option, extract the value and check if it's available for the selected top colour
-            const input = checkedSwatch.querySelector('input');
+            // Set up selectedOption variable to hold final value
+            let selectedOption = checkedSwatch || null;
 
-            // If no input is found, skip to next iteration
-            if (!input) return;
+            // If nothing is checked yet, pick the first available option.
+            if (!selectedOption) {
+                selectedOption = this.getFirstAvailableOption(swatchesGroup, availableList);
+            } else {
+                // If there is a checked option, verify it is valid for the selected top colour.
+                const input = selectedOption.querySelector('input');
+                const value = input?.value?.toLowerCase().trim() || '';
 
-            // Extract the value of the checked option and format it for comparison
-            const value = input.value.toLowerCase().trim();
+                if (!availableList.includes(value)) {
+                    selectedOption = this.getFirstAvailableOption(swatchesGroup, availableList);
+                }
+            }
 
-            // Check if the currently checked option is in the list of available options
-            const availableList = this.availableList(key, className, value);
-
-            // If there are no available options for this group, skip to next iteration
-            if (availableList.length === 0) {
+            // If no available options are found, skip to next iteration.
+            if (!selectedOption) {
                 return;
             }
 
-            // Check if the currently checked option is available for the selected top colour
-            const isAvailable = availableList.includes(value);
-
-            // Set up selectedOption variable to hold final value
-            let selectedOption;
-            
-            if(!isAvailable) {
-
-                // If the current option is not available for the top colour, find the first available option and set selectedOption to that
-                selectedOption = this.getFirstAvailableOption(swatchesGroup, availableList);
-
-                // If no available options are found, log a warning and return early to avoid errors
-                if (!selectedOption) {
-                    console.warn(`No available options found for ${key} with the selected top colour.`);
-                    return;
-                }
-
-                // Check the input inside the swatch to update the form state
-                const input = selectedOption.querySelector('input');
-                if (input) {
-                    input.checked = true;
-                }
-                
-            }
-
-            // If the currently checked option is available, use it as the default selection
-            if (isAvailable) {
-                selectedOption = checkedSwatch;
+            // Check the input inside the swatch to update the form state.
+            const selectedInput = selectedOption.querySelector('input');
+            if (selectedInput) {
+                selectedInput.checked = true;
             }
 
             // Extract the image file name from the selected option to use as the default option value
             // Add colour and file name to object of defaults to be sent in the custom event
             const swatchImage = selectedOption.querySelector('.swatch');
             const imgFileName = this.getImageFileName(swatchImage);
+
             const selectedLabel = selectedOption.querySelector('label')?.textContent?.trim();
 
             if (!imgFileName || !selectedLabel) {
@@ -198,7 +191,7 @@ export default class ConfiguratorRules {
                 filename: imgFileName,
                 swatchName: selectedLabel
             };
-            
+
         });
 
         // Also include the selected top colour as part of the defaults
@@ -252,10 +245,22 @@ export default class ConfiguratorRules {
 
         const metalOption = document.getElementById('option-metal-edge-veneer');
 
-        if(swatchesGroup && swatchesGroup.querySelectorAll('.wapf-swatch').length > 0) {
+        const hasVisibleMetalSwatches = !!swatchesGroup &&
+            Array.from(swatchesGroup.querySelectorAll('.wapf-swatch'))
+                .some(el => el.style.display !== 'none');
+
+        if(hasVisibleMetalSwatches) {
             metalOption.classList.remove('inactive');
         } else {
             metalOption.classList.add('inactive');
+
+            // Clear any stale metal selection from form state.
+            swatchesGroup?.querySelectorAll('input[type="radio"]').forEach(input => {
+                input.checked = false;
+            });
+
+            // Clear stale metal layer from selected options so viewer/URL do not carry veneer forward.
+            delete this.state.selectedOptions.metal;
 
             // Remove any veneer value from the URL if the metal edge veneer option is deactivated
             this.removeParamFromURL('veneer');
@@ -278,8 +283,13 @@ export default class ConfiguratorRules {
         // Find the first available option in the DOM and select it
         return Array.from(swatches).find(el => {
 
+            // Skip swatches currently hidden by availability rules.
+            if (el.style.display === 'none') {
+                return false;
+            }
+
             // Extract option name from label and compare with available options
-            const label = el.querySelector('label')?.textContent.toLowerCase().trim();
+            const label = el.querySelector('label')?.textContent?.toLowerCase().trim() || '';
 
             // Return true if this option is in the list of available options for the selected top colour
             return availableList.includes(label);
@@ -295,9 +305,6 @@ export default class ConfiguratorRules {
      */
     showHideOptions = () => {
 
-        // Set available bases and edges based on the swatch name
-        this.state.availableOptions = this.getAvailableOptions(this.productData.topColour);
-
 		// Convert available options object to an array of [optionType, optionsArray] pairs for easier iteration
         const availableOptionsArr = Object.entries(this.state.availableOptions || {});
 
@@ -307,22 +314,33 @@ export default class ConfiguratorRules {
             // Map option type to corresponding layer class
             const layerType = this.optionToClass[optionType];
 
+            // Ignore option groups that do not map to a swatch layer (e.g. top).
+            if (!layerType) {
+                return;
+            }
+
             // Find non-matching options in DOM and disable them
             const optionElements = document.querySelectorAll(`.obj-${layerType} .wapf-swatch`);
 
             // Base options are grouped into tile/wood, so flatten them for comparison
             const available =
                 optionType === 'base'
-                    ? [...optionsArray.tile, ...optionsArray.wood]
-                    : optionsArray;
-console.log(`Available options for ${optionType}:`, available);
+                    ? [
+                        ...(Array.isArray(optionsArray?.tile) ? optionsArray.tile : []),
+                        ...(Array.isArray(optionsArray?.wood) ? optionsArray.wood : [])
+                    ]
+                    : (Array.isArray(optionsArray) ? optionsArray : []);
+
+            const normalizedAvailable = available
+                .map(option => String(option).toLowerCase().trim());
+
             optionElements.forEach(el => {
 
                 // Extract option name from label and compare with available options
                 const label = el.querySelector('label').textContent.toLowerCase().trim();
 
 				// Show/hide options
-                el.style.display = available.includes(label) ? 'inline' : 'none';
+                el.style.display = normalizedAvailable.includes(label) ? 'inline' : 'none';
 
             });
 
@@ -339,6 +357,26 @@ console.log(`Available options for ${optionType}:`, available);
 
         // Get the src of the image inside the option element
         const imgSrc = swatchImage?.src;
+
+        if (!imgSrc) {
+            return null;
+        }
+
+        // Parse the URL path and extract the last filename segment.
+        const pathname = imgSrc.split('?')[0];
+        const rawFileName = pathname.substring(pathname.lastIndexOf('/') + 1);
+
+        if (!rawFileName) {
+            return null;
+        }
+
+        // Remove extension and optional WordPress resize suffix (e.g. -150x150).
+        const withoutExt = rawFileName.replace(/\.[a-z0-9]+$/i, '');
+        const normalized = withoutExt.replace(/-\d+x\d+$/i, '');
+
+        if (normalized) {
+            return normalized;
+        }
 
         // Extract swatch name from image URL using regex matches the part after "uploads/" and before "-{width}x{height}.jpg"
         const swatchName = imgSrc?.match(/uploads\/(.+?)-\d+x\d+\.jpg/);

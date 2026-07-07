@@ -146,6 +146,9 @@ export default class ProductViewer {
         // Update the texture name in state based on the selected model ID
         this.modelState.textureName = modelId;
 
+        // Keep container metadata in sync because other modules derive state from item-name.
+        this.container?.setAttribute('item-name', modelId);
+
         // Re-apply baseline camera adjustment for this viewport
         this.setAdjustment();
         
@@ -249,8 +252,9 @@ export default class ProductViewer {
                 // Update the corresponding entry in the update object with the cleaned filename
                 update[layerMap[layer]] = data.filename.replace(/\s+/g, '-').toLowerCase();
 
-                // Build URL params
-                urlParams[layerMap[layer]] = data.swatchName;
+                // Build URL params (URL key for metal edge is "veneer").
+                const urlKey = layer === 'metal' ? 'veneer' : layerMap[layer];
+                urlParams[urlKey] = data.swatchName;
 
                 // If base, also set secondcolourname as required by mtl.php for the base colour name to show in the UI
                 if (layer === 'base' && data.swatchName) {

@@ -333,41 +333,39 @@
                                                 </div>
                                             </div> 
                                             <div id="metal-container">   
-                                                <?php if(self::$initial_state['veneer']) : ?>
-                                                    <div class="obj-metal-edge-veneer wapf-field-container wapf-field-image-swatch field-6a9c491 wapf-required" style="width:100%;" for="6a9c491">
-                                                        <div class="wapf-field-label">
-                                                            <label><span>Metal Edge Veneer</span> <abbr class="required" title="required">*</abbr></label>
-                                                        </div>
-                                                        <div class="wapf-field-input">
-                                                            <div class="wapf-image-swatch-wrapper wapf-swatch-wrapper" style="--wapf-cols:auto-fill;--apf-col-width:68px">
-                                                                <input type="hidden" class="wapf-tf-h" value="0" name="metal_edge_veneer">
-    
-                                                                    <?php foreach(self::$product_data['master_values'][$product_type]['metal'] as $metal) : ?>
-                                    
-                                                                        <div class="wapf-swatch wapf-swatch--image wapf-single-select apf-pick-box" style="<?php echo (in_array($metal['name'], $metals_for_current_top)) ? 'display: inline;' : 'display: none;'; ?>">
-                                                                            <label aria-label="<?php echo esc_attr($metal['name']); ?>">
-                                                                                <input
-                                                                                    type="radio"
-                                                                                    name="metal_edge_veneer"
-                                                                                    class="wapf-input"
-                                                                                    id="<?php echo esc_attr($metal['sample_id'] ?? ''); ?>"
-                                                                                    value="<?php echo esc_attr($metal['name']); ?>"
-                                                                                    <?php echo (self::$initial_state['veneer'] === $metal['name']) ? 'checked' : ''; ?>
-                                                                                    data-sample-id="<?php echo esc_attr($metal['sample_id'] ?? ''); ?>"
-                                                                                >
-                                                                                <div>
-                                                                                    <img class="swatch" src="<?php echo esc_url($metal['url'] ?? ''); ?>" alt="<?php echo esc_attr($metal['name']); ?>" />
-                                                                                </div>
-                                                                                <div class="wapf-swatch-label"><?php echo $metal['name']; ?></div>
-                                                                            </label>
-                                                                        </div>
-                                    
-                                                                    <?php endforeach; ?>
-                                                                    <!-- End dynamic swatches -->
-                                                            </div>
+                                                <div class="obj-metal-edge-veneer wapf-field-container wapf-field-image-swatch field-6a9c491 wapf-required" style="width:100%;" for="6a9c491">
+                                                    <div class="wapf-field-label">
+                                                        <label><span>Metal Edge Veneer</span> <abbr class="required" title="required">*</abbr></label>
+                                                    </div>
+                                                    <div class="wapf-field-input">
+                                                        <div class="wapf-image-swatch-wrapper wapf-swatch-wrapper" style="--wapf-cols:auto-fill;--apf-col-width:68px">
+                                                            <input type="hidden" class="wapf-tf-h" value="0" name="metal_edge_veneer">
+
+                                                                <?php foreach((self::$product_data['master_values'][$product_type]['metal'] ?? []) as $metal) : ?>
+
+                                                                    <div class="wapf-swatch wapf-swatch--image wapf-single-select apf-pick-box" style="<?php echo (in_array($metal['name'], $metals_for_current_top)) ? 'display: inline;' : 'display: none;'; ?>">
+                                                                        <label aria-label="<?php echo esc_attr($metal['name']); ?>">
+                                                                            <input
+                                                                                type="radio"
+                                                                                name="metal_edge_veneer"
+                                                                                class="wapf-input"
+                                                                                id="<?php echo esc_attr($metal['sample_id'] ?? ''); ?>"
+                                                                                value="<?php echo esc_attr($metal['name']); ?>"
+                                                                                <?php echo (self::$initial_state['veneer'] === $metal['name']) ? 'checked' : ''; ?>
+                                                                                data-sample-id="<?php echo esc_attr($metal['sample_id'] ?? ''); ?>"
+                                                                            >
+                                                                            <div>
+                                                                                <img class="swatch" src="<?php echo esc_url($metal['url'] ?? ''); ?>" alt="<?php echo esc_attr($metal['name']); ?>" />
+                                                                            </div>
+                                                                            <div class="wapf-swatch-label"><?php echo $metal['name']; ?></div>
+                                                                        </label>
+                                                                    </div>
+
+                                                                <?php endforeach; ?>
+                                                                <!-- End dynamic swatches -->
                                                         </div>
                                                     </div>
-                                                <?php endif; ?>
+                                                </div>
                                             </div>
                                             <div id="model-container">
                                                 <div class="obj-model wapf-field-container wapf-field-select field-2e633bf wapf-required has-pricing" style="width:100%;" for="2e633bf">
