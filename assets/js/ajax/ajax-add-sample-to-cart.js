@@ -72,7 +72,7 @@ export default class SampleAddToCart {
         const formData = new FormData();
         
         // Append action for WordPress AJAX
-        formData.append('action', 'add_swatch_to_cart');
+        formData.append('action', 'tm3d_add_swatch_to_cart');
         
         // Append product IDs as JSON string
         formData.append('product_ids', JSON.stringify(productIds));

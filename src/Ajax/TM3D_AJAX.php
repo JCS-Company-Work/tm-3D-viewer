@@ -6,13 +6,12 @@
 
         public static function init() {
 
-            // AJAX handler for adding configured product to cart
-            add_action('wp_ajax_tm_add_to_cart', [__CLASS__, 'ajax_add_product_to_cart']);
-            add_action('wp_ajax_nopriv_tm_add_to_cart', [__CLASS__, 'ajax_add_product_to_cart']);
+            // Preferred namespaced actions.
+            add_action('wp_ajax_tm3d_add_to_cart', [__CLASS__, 'ajax_add_product_to_cart']);
+            add_action('wp_ajax_nopriv_tm3d_add_to_cart', [__CLASS__, 'ajax_add_product_to_cart']);
 
-            // Add swatch to cart
-            add_action('wp_ajax_add_swatch_to_cart', [__CLASS__, 'ajax_add_swatch_to_cart']);
-            add_action('wp_ajax_nopriv_add_swatch_to_cart', [__CLASS__, 'ajax_add_swatch_to_cart']);
+            add_action('wp_ajax_tm3d_add_swatch_to_cart', [__CLASS__, 'ajax_add_swatch_to_cart']);
+            add_action('wp_ajax_nopriv_tm3d_add_swatch_to_cart', [__CLASS__, 'ajax_add_swatch_to_cart']);
 
             add_filter('woocommerce_get_item_data', [__CLASS__, 'tm_add_swatch_note_to_cart_item'], 10, 2);
             add_action('woocommerce_checkout_create_order_line_item', [__CLASS__, 'tm_add_swatch_note_to_order_item'], 10, 3);

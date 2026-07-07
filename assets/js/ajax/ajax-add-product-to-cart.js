@@ -75,7 +75,7 @@ export default class ProductAddToCart {
 
             // Build payload object dynamically
             const payload = {
-                action: 'tm_add_to_cart', // Custom WooCommerce AJAX action
+                action: 'tm3d_add_to_cart',
                 product_id: productId,
                 configured_total: configuredTotal,
                 top_colour: topColour,

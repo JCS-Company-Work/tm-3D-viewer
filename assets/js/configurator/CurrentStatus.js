@@ -399,8 +399,8 @@ export default class CurrentStatus {
                 this.updateSingleLayer(input, input.closest('.obj-top-colour') ? 'obj-top-colour' : (input.closest('.obj-base') ? 'obj-base' : 'obj-metal-edge-veneer'));
             });
 
-            // If no metal is selected for the current model/top combo, remove any stale metal status layer.
-            const hasSelectedMetal = !!document.querySelector('.obj-metal-edge-veneer .wapf-input:checked');
+            // If no metal is selected in state for the current model/top combo, remove stale metal status layer.
+            const hasSelectedMetal = !!this.state.selectedOptions?.metal;
             if (!hasSelectedMetal) {
                 document.querySelector('.status-layer-images .obj-metal-edge-veneer')?.remove();
             }

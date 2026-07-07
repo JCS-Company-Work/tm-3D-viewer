@@ -111,6 +111,11 @@ export default class Configurator {
                 const id = input.id;
                 const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions, id);
 
+                // Clear stale veneer from URL when current model has no metal selection.
+                if (!this.state.selectedOptions?.metal) {
+                    urlParams.veneer = '';
+                }
+
                 this.ui.updateURL(urlParams);
 
                 return;
@@ -137,6 +142,11 @@ export default class Configurator {
                 // Update the viewer with the selected top colour
                 const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions);
 
+                // Clear stale veneer from URL when current top/model has no metal selection.
+                if (!this.state.selectedOptions?.metal) {
+                    urlParams.veneer = '';
+                }
+
                 this.ui.updateURL(urlParams);
 
                 return;
@@ -159,6 +169,11 @@ export default class Configurator {
 
                 // Update the viewer with the selected options
                 const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions);
+
+                // Clear stale veneer from URL when metal is not selected/available.
+                if (!this.state.selectedOptions?.metal) {
+                    urlParams.veneer = '';
+                }
 
                 this.ui.updateURL(urlParams);
 
