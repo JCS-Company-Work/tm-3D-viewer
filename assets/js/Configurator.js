@@ -37,6 +37,7 @@ export default class Configurator {
         this.addCollectionFilterListeners();
         this.updateModel();
         this.syncInitialURLState();
+        this.initCreatedByUs();
     }
 
     /**
@@ -278,6 +279,88 @@ export default class Configurator {
             // Update URL with new model size
             this.ui.updateURL({'model': label});
 
+        });
+
+    }
+
+    /**
+     * Initializes the "Created By Us" section, allowing users to select pre-configured options.
+     * @returns {void}
+     */
+    initCreatedByUs() {
+
+        // Get all elements representing pre-configured options
+        const configItems = document.querySelectorAll('.created-by-us-configuration');
+
+        // If no pre-configured options are found, exit early
+        if (!configItems.length) {
+            return;
+        }
+
+        // Add click event listeners to each pre-configured option
+        configItems.forEach((config) => {
+
+            config.addEventListener('click', () => {
+
+                // Extract top, base, and metal values from the clicked configuration
+                const top = (config.getAttribute('data-top') || '').trim();
+                const base = (config.getAttribute('data-base') || '').trim();
+                const metal = (config.getAttribute('data-metal') || '').trim();
+
+                // Select the corresponding swatches in the UI based on the extracted values
+                if (top) {
+                    const topInput = document.querySelector(`.obj-top-colour input[type="radio"][value="${CSS.escape(top)}"]`);
+                    if (topInput) {
+                        topInput.checked = true;
+                    }
+                }
+
+                // Update product data and colour options based on the selected top colour
+                this.rules.setProductData();
+                this.rules.setColourOptions();
+
+                // Select the corresponding base and metal swatches in the UI based on the extracted values
+                if (base) {
+                    const baseInput = document.querySelector(`.obj-base input[type="radio"][value="${CSS.escape(base)}"]`);
+                    if (baseInput) {
+                        baseInput.checked = true;
+                    }
+                }
+
+                // Select the corresponding metal swatch in the UI based on the extracted value
+                if (metal) {
+                    let metalInput = document.querySelector(`.obj-metal-edge-veneer input[type="radio"][value="${CSS.escape(metal)}"]`);
+
+                    if (!metalInput) {
+                        const normalizedMetal = metal.replace(/^banding[-_]/i, '');
+                        metalInput = document.querySelector(`.obj-metal-edge-veneer input[type="radio"][value="${CSS.escape(normalizedMetal)}"]`);
+                    }
+
+                    if (metalInput) {
+                        metalInput.checked = true;
+                    }
+                }
+
+                // Update product data and selected options based on the chosen configuration
+                this.rules.setProductData();
+                this.rules.setSelectedOptions();
+
+                // Update the current status layer and load/create a composite image update
+                const statusInput = document.querySelector('.obj-top-colour input[type="radio"]:checked');
+                this.currentStatus.updateStatusLayer(statusInput);
+                this.currentStatus.scheduleCompositeUpdate();
+                this.currentStatus.createQR();
+
+                // Update the 3D viewer with the selected options
+                const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions);
+                if (!this.state.selectedOptions?.metal) {
+                    urlParams.veneer = '';
+                }
+
+                // Update the URL to reflect the selected configuration
+                this.ui.updateURL(urlParams);
+
+            });
         });
 
     }
