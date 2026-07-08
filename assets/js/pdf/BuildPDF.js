@@ -190,8 +190,8 @@ export default class BuildPDF {
         // Add configured price text to price value if it exists
         const configuredPrice = productPrice ? `CONFIGURED PRICE: ${productPrice}` : productPrice;
 
-        // Get QR code
-        const qrCode = productPage.querySelector('.qrcode, #qrcode, .status-qr, .status-qr img');
+        // Resolve QR code from cloned status markup first, then live DOM as fallback.
+        const qrCode = this.findQrSource(productPage);
 
         // Get product image
         const productImage = productPage.querySelector('.status-image img')?.src || '';
@@ -237,6 +237,64 @@ export default class BuildPDF {
             swatches: swatchData
         };
 
+    }
+
+    /**
+     * Find a usable QR source element from the provided root, with fallback to the live DOM.
+     */
+    findQrSource(root) {
+        const selector = '.status-qrcode, .qrcode, #qrcode, .status-qr, .status-qr img';
+        return root?.querySelector(selector) || document.querySelector(selector);
+    }
+
+    /**
+     * Convert QR source markup into a stable <img> for PDF rendering.
+     */
+    buildQrImageNode(qrSource) {
+        if (!qrSource) return null;
+
+        let src = '';
+
+        // Direct image source.
+        if (qrSource.tagName === 'IMG') {
+            src = qrSource.getAttribute('src') || '';
+        }
+
+        // Canvas-generated QR source.
+        if (!src && qrSource.tagName === 'CANVAS') {
+            src = qrSource.toDataURL('image/png');
+        }
+
+        // Inline SVG QR source.
+        if (!src && qrSource.tagName === 'SVG') {
+            const svgMarkup = new XMLSerializer().serializeToString(qrSource);
+            src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgMarkup)}`;
+        }
+
+        // Container element holding img/canvas/svg.
+        if (!src) {
+            const nestedImg = qrSource.querySelector('img');
+            const nestedCanvas = qrSource.querySelector('canvas');
+            const nestedSvg = qrSource.querySelector('svg');
+
+            if (nestedImg) {
+                src = nestedImg.getAttribute('src') || '';
+            } else if (nestedCanvas) {
+                src = nestedCanvas.toDataURL('image/png');
+            } else if (nestedSvg) {
+                const svgMarkup = new XMLSerializer().serializeToString(nestedSvg);
+                src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgMarkup)}`;
+            }
+        }
+
+        if (!src) return null;
+
+        const qrImg = document.createElement('img');
+        qrImg.classList.add('pdf-qr-code');
+        qrImg.src = src;
+        qrImg.alt = 'QR code';
+
+        return qrImg;
     }
 
     buildProductColumn(pdfData) {
@@ -362,10 +420,10 @@ export default class BuildPDF {
             const qrOverlay = document.createElement('div');
             qrOverlay.classList.add('pdf-banner-qr');
 
-            const qrNode = qrCodeEl.cloneNode(true);
-            qrNode.classList.add('pdf-qr-code');
-
-            qrOverlay.appendChild(qrNode);
+            const qrNode = this.buildQrImageNode(qrCodeEl);
+            if (qrNode) {
+                qrOverlay.appendChild(qrNode);
+            }
             bannerWrapper.appendChild(qrOverlay);
         }
 

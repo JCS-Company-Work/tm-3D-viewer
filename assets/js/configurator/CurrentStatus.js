@@ -507,7 +507,7 @@ export default class CurrentStatus {
         layer.className = `${objClass} status-layer`;
         layer.innerHTML = `
             <div class="status-layer-img">
-                <a href="${swatchImage.src}" data-pswp-src="${swatchImage.src}" data-pswp-width="700" data-pswp-height="1200" data-pswp-gallery="woocommerce-gallery">
+                <a href="${swatchImage.src}" data-pswp-src="${swatchImage.src}" data-pswp-width="700" data-pswp-height="1200" data-pswp-gallery="tm3d-status-gallery">
                     <img loading="lazy" decoding="async" fetchpriority="low" width="150" height="150" src="${swatchImage.src}" alt="${layerName}">
                 </a>
             </div>

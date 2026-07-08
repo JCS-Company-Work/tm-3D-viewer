@@ -368,13 +368,18 @@
 
                 switch ($key) {
                     case 'top':
-                        $swatch_urls[$key] = self::$product_data[$product_type]['colour_options'][$colour][$key]['thumb_url'] ?? '';
+                        $top_option = self::resolveTopColourOption($product_type, $colour);
+                        $swatch_urls[$key] = $top_option['top']['thumb_url'] ?? '';
                         break;
                     case 'base':
-                        $swatch_urls[$key] = self::$product_data['master_values'][$product_type]['base'][$baseType][$colour]['thumb_url'] ?? '';
+                        $base_options = self::$product_data['master_values'][$product_type]['base'][$baseType] ?? [];
+                        $base_option = self::resolveMasterColourOption($base_options, $colour);
+                        $swatch_urls[$key] = $base_option['thumb_url'] ?? '';
                         break;
                     case 'metal':
-                        $swatch_urls[$key] = self::$product_data['master_values'][$product_type]['metal'][$colour]['thumb_url'] ?? '';
+                        $metal_options = self::$product_data['master_values'][$product_type]['metal'] ?? [];
+                        $metal_option = self::resolveMasterColourOption($metal_options, $colour);
+                        $swatch_urls[$key] = $metal_option['thumb_url'] ?? '';
                         break;
                     default:
                         $swatch_urls[$key] = '';
@@ -383,6 +388,86 @@
             }
 
             return $swatch_urls;
+
+        }
+
+        /**
+         * Normalize a colour string for robust key comparison.
+         *
+         * @param string $value
+         * @return string
+         */
+        private static function normalizeColourValue($value) {
+            return strtolower(str_replace([' ', '-'], '_', trim((string) $value)));
+        }
+
+        /**
+         * Resolve a top colour option from colour_options with key/name fallbacks.
+         *
+         * @param string $product_type
+         * @param string $colour
+         * @return array
+         */
+        private static function resolveTopColourOption($product_type, $colour) {
+
+            $colour_options = self::$product_data[$product_type]['colour_options'] ?? [];
+
+            if (isset($colour_options[$colour])) {
+                return $colour_options[$colour];
+            }
+
+            $normalized = self::normalizeColourValue($colour);
+
+            if (isset($colour_options[$normalized])) {
+                return $colour_options[$normalized];
+            }
+
+            foreach ($colour_options as $key => $option) {
+                if (self::normalizeColourValue($key) === $normalized) {
+                    return $option;
+                }
+
+                $option_name = $option['top']['name'] ?? '';
+                if (self::normalizeColourValue($option_name) === $normalized) {
+                    return $option;
+                }
+            }
+
+            return [];
+
+        }
+
+        /**
+         * Resolve a base or metal option from master_values with key/name fallbacks.
+         *
+         * @param array $options
+         * @param string $colour
+         * @return array
+         */
+        private static function resolveMasterColourOption($options, $colour) {
+
+            if (isset($options[$colour])) {
+                return $options[$colour];
+            }
+
+            $normalized = self::normalizeColourValue($colour);
+
+            if (isset($options[$normalized])) {
+                return $options[$normalized];
+            }
+
+            foreach ($options as $key => $option) {
+                if (self::normalizeColourValue($key) === $normalized) {
+                    return $option;
+                }
+
+                $option_name = $option['name'] ?? '';
+                if (self::normalizeColourValue($option_name) === $normalized) {
+                    return $option;
+                }
+            }
+
+            return [];
 
         }
 

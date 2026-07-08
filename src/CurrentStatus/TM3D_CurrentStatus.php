@@ -83,7 +83,7 @@ class TM3D_CurrentStatus {
                                                 data-pswp-src="<?php echo esc_url($data['initial_state']['swatch_urls']['top']); ?>"
                                                 data-pswp-width="700"
                                                 data-pswp-height="1200"
-                                                data-pswp-gallery="woocommerce-gallery">
+                                                data-pswp-gallery="tm3d-status-gallery">
                                                 <img 
                                                 loading="lazy" 
                                                 decoding="async" 
@@ -105,7 +105,7 @@ class TM3D_CurrentStatus {
                                                 data-pswp-src="<?php echo esc_url($data['initial_state']['swatch_urls']['base']); ?>"
                                                 data-pswp-width="700"
                                                 data-pswp-height="1200"
-                                                data-pswp-gallery="woocommerce-gallery">
+                                                data-pswp-gallery="tm3d-status-gallery">
                                                 <img 
                                                     loading="lazy" 
                                                     decoding="async" 
@@ -128,7 +128,7 @@ class TM3D_CurrentStatus {
                                                 data-pswp-src="<?php echo esc_url($data['selected']['metal']['url']); ?>"
                                                 data-pswp-width="886"
                                                 data-pswp-height="187"
-                                                data-pswp-gallery="woocommerce-gallery">
+                                                data-pswp-gallery="tm3d-status-gallery">
                                                 <img 
                                                     loading="lazy" 
                                                     decoding="async" 
@@ -163,7 +163,7 @@ class TM3D_CurrentStatus {
                                         data-pswp-src="<?php echo esc_url($images['1600'] ?? $images['700']); ?>"
                                         data-pswp-width="1600"
                                         data-pswp-height="650"
-                                        data-pswp-gallery="woocommerce-gallery">
+                                        data-pswp-gallery="tm3d-status-gallery">
                                         <img 
                                             src="<?php echo esc_url($images['700']); ?>" 
                                             alt="Configured Product image preview"

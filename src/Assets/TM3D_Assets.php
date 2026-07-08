@@ -49,6 +49,14 @@
         
         {
 
+            // Enqueue PhotoSwipe core styles required for modal rendering.
+            wp_enqueue_style(
+                'tm-photoswipe-css',
+                TM3D_URL . 'assets/css/photoswipe.css',
+                [],
+                TM3D_VERSION
+            );
+
             // Enqueue GSAP for animations
             wp_enqueue_script(
                 'gsap',
