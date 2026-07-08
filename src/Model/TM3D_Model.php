@@ -3,6 +3,7 @@
     namespace TmThreeViewer\Model;
 
     use TmThreeViewer\Assets\TM3D_Assets;
+    use TmThreeViewer\CurrentStatus\TM3D_CreatedByUs;
     use TmThreeViewer\Data\TM3D_Data;
     use TmThreeViewer\CurrentStatus\TM3D_CurrentStatus;
 
@@ -156,6 +157,9 @@
             }
 
             ob_start();
+
+            // Output created by us section and current status section
+            TM3D_CreatedByUs::render_created_by_us(self::$initial_state['id']);
 
             ?>
 

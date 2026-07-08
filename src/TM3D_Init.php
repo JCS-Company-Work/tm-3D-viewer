@@ -14,10 +14,11 @@
             // List of modules to initialize
             $modules = [
                 \TmThreeViewer\Assets\TM3D_Assets::class,
-                \TmThreeViewer\Model\TM3D_Model::class,
-                \TmThreeViewer\ColourOptions\TM3D_ColourOptions::class,
-                \TmThreeViewer\Images\TM3D_Images::class,
                 \TmThreeViewer\Ajax\TM3D_Ajax::class,
+                \TmThreeViewer\ColourOptions\TM3D_ColourOptions::class,
+                \TmThreeViewer\CurrentStatus\TM3d_CreatedByUs::class,
+                \TmThreeViewer\Images\TM3D_Images::class,
+                \TmThreeViewer\Model\TM3D_Model::class,
             ];
 
             // Initialize each module by calling its init method if it exists
