@@ -80,6 +80,9 @@ export default class Configurator {
                 // Update the selected product type in the state
                 const productType = input.getAttribute('data-product-type');
 
+                // Rebuild created by us section to reflect the new product
+                this.ui.buildCreatedByUs(input.id);
+
                 // Rebuild the UI for the new product type
                 this.ui.buildUI(input.id, productType, input.closest('.collection-wrapper').getAttribute('data-collection'));
 
@@ -289,18 +292,22 @@ export default class Configurator {
      */
     initCreatedByUs() {
 
-        // Get all elements representing pre-configured options
-        const configItems = document.querySelectorAll('.created-by-us-configuration');
+        // Attach one delegated listener so dynamically replaced cards keep working.
+        const configsContainer = document.querySelector('.created-by-us-configurations');
 
-        // If no pre-configured options are found, exit early
-        if (!configItems.length) {
+        if (!configsContainer) {
             return;
         }
 
-        // Add click event listeners to each pre-configured option
-        configItems.forEach((config) => {
+        configsContainer.addEventListener('click', (event) => {
 
-            config.addEventListener('click', () => {
+                const config = event.target.closest('.created-by-us-configuration');
+
+                if (!config || !configsContainer.contains(config)) {
+                    return;
+                }
+
+                event.preventDefault();
 
                 // Extract top, base, and metal values from the clicked configuration
                 const top = (config.getAttribute('data-top') || '').trim();
@@ -360,7 +367,11 @@ export default class Configurator {
                 // Update the URL to reflect the selected configuration
                 this.ui.updateURL(urlParams);
 
-            });
+                const modelSection = document.getElementById('3d-model');
+                if (modelSection) {
+                    modelSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+
         });
 
     }

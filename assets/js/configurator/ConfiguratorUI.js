@@ -43,6 +43,57 @@ export default class ConfiguratorUI {
     }
 
     /**
+     * Builds the "Created By Us" section of the UI by fetching data from the API and updating the DOM.
+     * @param {string} id - The ID of the product for which to fetch "Created By Us" configurations.
+     * @returns {void}
+     */
+    buildCreatedByUs(id) {
+
+        // Get created by us HTML from API
+        const createdByUsContainer = document.querySelector('.created-by-us-configurations');
+        if (!createdByUsContainer) {
+            console.warn('Created by us container not found.');
+            return;
+        }
+
+        const previousHTML = createdByUsContainer.innerHTML;
+        createdByUsContainer.setAttribute('aria-busy', 'true');
+        createdByUsContainer.innerHTML = '<div class="created-by-us-loading" role="status" aria-live="polite">Loading configurations...</div>';
+
+        fetch(`${window.location.origin}/wp-json/tm3d/v1/created-by-us`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id })
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch Created By Us: ${response.status}`);
+                }
+
+                return response.json();
+            })
+            .then(payload => {
+                const html = typeof payload === 'string' ? payload : (payload?.html || '');
+
+                // API returns full section markup; only replace card items in the current container.
+                const temp = document.createElement('div');
+                temp.innerHTML = html;
+
+                const nextContainer = temp.querySelector('.created-by-us-configurations');
+                createdByUsContainer.innerHTML = nextContainer ? nextContainer.innerHTML : html;
+                createdByUsContainer.removeAttribute('aria-busy');
+            })
+            .catch(error => {
+                createdByUsContainer.innerHTML = previousHTML;
+                createdByUsContainer.removeAttribute('aria-busy');
+                console.error('Error fetching created by us HTML:', error);
+            });
+
+    }
+
+    /**
      * Rebuild UI after product model change to correctly reflect available options for the selected product type.
      * @param {string} id - The ID of the selected product type.
      * @param {string} productType - The type of the selected product.

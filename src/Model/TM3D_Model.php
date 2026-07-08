@@ -159,7 +159,7 @@
             ob_start();
 
             // Output created by us section and current status section
-            TM3D_CreatedByUs::render_created_by_us(self::$initial_state['id']);
+            echo TM3D_CreatedByUs::render_created_by_us(self::$initial_state['id']);
 
             ?>
 
