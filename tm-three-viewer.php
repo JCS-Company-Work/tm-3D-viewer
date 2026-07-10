@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 // Constants
 define( 'TM3D_PATH', plugin_dir_path( __FILE__ ) );
 define( 'TM3D_URL',  plugin_dir_url( __FILE__ ) );
-define( 'TM3D_VERSION', '1.0.2' );
+define( 'TM3D_VERSION', '1.0.3' );
 
 
 // Path to composer also bring in dotenv for environment variable handling

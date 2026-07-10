@@ -5,9 +5,6 @@ export default class BuildPDF {
         // Class property to hold model size
         this.currentModel = null;
 
-        // Variable to hold SKU value
-        this.sku = this.getSKU();
-
         // Initialize an empty array to hold PDF elements
         this.elsToAdd = [];
 
@@ -46,6 +43,9 @@ export default class BuildPDF {
             event.preventDefault();
             pdfButton.classList.add('button-spinner');
 
+            // Resolve latest SKU at click-time so PDF name/banner matches current selection.
+            const sku = this.getSKU();
+
             const pdfConfig = this.getPDFConfig();
 
             this.getCurrentModel();
@@ -55,13 +55,13 @@ export default class BuildPDF {
                 return;
             }
 
-            const pdfName = this.sku || 'Product';
+            const pdfName = sku || 'Product';
             let pdfWrapper;
 
             try {
 
                 // Clone the entire product page
-                pdfWrapper = this.buildPDF(productPage.cloneNode(true));
+                pdfWrapper = this.buildPDF(productPage.cloneNode(true), sku);
 
                 // Append PDF wrapper to bottom of the page for Puppeteer to render
                 pdfWrapper.style.position = 'relative';
@@ -137,16 +137,20 @@ export default class BuildPDF {
      */
     getSKU() {
 
-        const skuElement = document.querySelector('[data-sku]');
+        const skuElement = document.querySelector('[item-name]');
 
-        return skuElement.getAttribute('data-sku')?.trim() || '';
+        if (!skuElement) {
+            return '';
+        }
+
+        return skuElement.getAttribute('item-name')?.trim() || '';
 
     }
 
     /**
      * Build and return the wrapper containing all content for the PDF
      */
-    buildPDF = (productPage) => {
+    buildPDF = (productPage, sku = '') => {
         // Reset the array for a fresh build
         this.elsToAdd = [];
 
@@ -159,10 +163,10 @@ export default class BuildPDF {
         pdfWrapper.classList.add('pdf-class', 'flow');
 
         // Gather all data once for both banner/content sections
-        const pdfData = this.getPdfData(productPage);
+        const pdfData = this.getPdfData(productPage, sku);
 
         // Add sections to the PDF
-        this.addBanner(pdfData.qrCode);
+        this.addBanner(pdfData.qrCode, sku);
         this.addProductData(pdfData);
         this.addContactDetails();
 
@@ -179,7 +183,7 @@ export default class BuildPDF {
 
     }
 
-    getPdfData(productPage) {
+    getPdfData(productPage, sku = '') {
 
         // Get product title
         const productTitle = productPage.querySelector('.status-title')?.innerText.trim() || '';
@@ -200,19 +204,39 @@ export default class BuildPDF {
         const specTextBlock = productPage.querySelector('.status-specifications .d-block') || '';
 
         // Clean spec text by replacing <br> with newlines and removing any other HTML tags
-        const specText = specTextBlock.innerHTML
+        let specText = specTextBlock.innerHTML
             .replace(/<br\s*\/?>/gi, '\n')
-            .replace(/<[^>]+>/g, '');
+            .replace(/<[^>]+>/g, '')
+            .trim();
 
-        // Get image swatches and names
-        const swatches = productPage.querySelectorAll('.status-layer-img img');
+        // Replace top size heading (e.g. "300cm Table:") with SKU heading for PDF output.
+        if (sku) {
+            specText = specText.replace(/^\s*\d{3,4}cm\s+Table:\s*/i, `SKU: ${sku}\n`);
+        }
 
-        const swatchData = Array.from(swatches).map((swatch, index) => {
-            const swatchContainer = swatch.closest('.status-layer');
+        // Get visible swatches only (exclude hidden layers such as metal when not active).
+        const swatches = Array.from(productPage.querySelectorAll('.status-layer-img img')).filter((swatch) => {
+            const layerEl = swatch.closest('.status-layer');
+            if (!layerEl) return false;
+
+            if (
+                layerEl.classList.contains('d-none') ||
+                layerEl.hasAttribute('hidden') ||
+                layerEl.style.display === 'none'
+            ) {
+                return false;
+            }
+
+            const hiddenParent = layerEl.closest('.d-none, [hidden], [style*="display:none"]');
+            return !hiddenParent || hiddenParent === layerEl;
+        });
+
+        const swatchData = swatches.map((swatch, index) => {
+            const layerEl = swatch.closest('.status-layer');
             const fallbackLabel = swatch.getAttribute('alt') || swatch.getAttribute('title') || `Layer ${index + 1}`;
 
-            const swatchLabel = swatchContainer?.querySelector('.status-layer-title')?.innerText.trim() || fallbackLabel;
-            const swatchValue = swatchContainer?.querySelector('.status-layer-colour')?.innerText.trim() || '';
+            const swatchLabel = layerEl?.querySelector('.status-layer-title')?.innerText.trim() || fallbackLabel;
+            const swatchValue = layerEl?.querySelector('.status-layer-colour')?.innerText.trim() || '';
 
             return {
                 src: swatch.src,
@@ -381,7 +405,7 @@ export default class BuildPDF {
      /**
      * Add TailorMade Banner
      */
-    addBanner = (qrCodeEl = null) => {
+    addBanner = (qrCodeEl = null, sku = '') => {
 
         // Wrapper so QR can be overlaid on the banner image
         const bannerWrapper = document.createElement('div');
@@ -401,7 +425,7 @@ export default class BuildPDF {
         };
 
         // Find a key that exists in the SKU
-        const match = Object.keys(bannerMap).find(key => this.sku.includes(key));
+        const match = Object.keys(bannerMap).find(key => sku.includes(key));
 
         // Default to tt03 if no match
         const bannerMatch = bannerMap[match] || 'tt03-pdf-banner.jpg';

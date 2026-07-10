@@ -156,7 +156,7 @@
 
             ?>
 
-            <div class="created-by-us-configurations" data-sku="<?php echo esc_attr($sku); ?>">
+            <div class="created-by-us-configurations">
 
                 <?php foreach ($configs as $layers) {
 

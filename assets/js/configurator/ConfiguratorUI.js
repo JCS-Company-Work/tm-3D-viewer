@@ -58,7 +58,21 @@ export default class ConfiguratorUI {
 
         const previousHTML = createdByUsContainer.innerHTML;
         createdByUsContainer.setAttribute('aria-busy', 'true');
-        createdByUsContainer.innerHTML = '<div class="created-by-us-loading" role="status" aria-live="polite">Loading configurations...</div>';
+        createdByUsContainer.classList.add('button-spinner');
+
+        const currentCards = Array.from(createdByUsContainer.querySelectorAll('.created-by-us-configuration'));
+        const currentCardHeights = currentCards.map(card => card.offsetHeight).filter(Boolean);
+        const currentContainerHeight = createdByUsContainer.offsetHeight;
+
+        if (currentCardHeights.length) {
+            createdByUsContainer.style.setProperty('--tm3d-card-min-height', `${Math.max(...currentCardHeights)}px`);
+        }
+
+        if (currentContainerHeight) {
+            createdByUsContainer.style.minHeight = `${currentContainerHeight}px`;
+        }
+
+        this.setCreatedByUsCardsLoading(createdByUsContainer, true);
 
         fetch(`${window.location.origin}/wp-json/tm3d/v1/created-by-us`, {
             method: 'POST',
@@ -83,13 +97,105 @@ export default class ConfiguratorUI {
 
                 const nextContainer = temp.querySelector('.created-by-us-configurations');
                 createdByUsContainer.innerHTML = nextContainer ? nextContainer.innerHTML : html;
-                createdByUsContainer.removeAttribute('aria-busy');
+                this.watchCreatedByUsCardImages(createdByUsContainer);
             })
             .catch(error => {
                 createdByUsContainer.innerHTML = previousHTML;
+                this.setCreatedByUsCardsLoading(createdByUsContainer, false);
+                createdByUsContainer.classList.remove('button-spinner');
                 createdByUsContainer.removeAttribute('aria-busy');
+                createdByUsContainer.style.removeProperty('min-height');
+                createdByUsContainer.style.removeProperty('--tm3d-card-min-height');
                 console.error('Error fetching created by us HTML:', error);
             });
+
+    }
+
+    /**
+     * Toggle loading state for all Created By Us cards in a container.
+     * @param {HTMLElement} container
+     * @param {boolean} isLoading
+     * @returns {void}
+     */
+    setCreatedByUsCardsLoading(container, isLoading) {
+
+        const cards = container.querySelectorAll('.created-by-us-configuration');
+
+        cards.forEach(card => {
+            card.classList.toggle('button-spinner', isLoading);
+            card.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+            card.style.pointerEvents = isLoading ? 'none' : '';
+        });
+
+    }
+
+    /**
+     * Keep per-card spinner active until each Created By Us image has loaded.
+     * @param {HTMLElement} container
+     * @returns {void}
+     */
+    watchCreatedByUsCardImages(container) {
+
+        const cards = Array.from(container.querySelectorAll('.created-by-us-configuration'));
+
+        if (!cards.length) {
+            container.classList.remove('button-spinner');
+            container.removeAttribute('aria-busy');
+            container.style.removeProperty('min-height');
+            container.style.removeProperty('--tm3d-card-min-height');
+            return;
+        }
+
+        let pendingCount = 0;
+
+        cards.forEach(card => {
+            const img = card.querySelector('img');
+
+            if (!img || img.complete) {
+                card.classList.remove('button-spinner');
+                card.setAttribute('aria-busy', 'false');
+                card.style.pointerEvents = '';
+                return;
+            }
+
+            pendingCount += 1;
+            card.classList.add('button-spinner');
+            card.setAttribute('aria-busy', 'true');
+            card.style.pointerEvents = 'none';
+
+            const onImageDone = () => {
+                card.classList.remove('button-spinner');
+                card.setAttribute('aria-busy', 'false');
+                card.style.pointerEvents = '';
+                pendingCount -= 1;
+
+                if (pendingCount <= 0) {
+                    container.classList.remove('button-spinner');
+                    container.removeAttribute('aria-busy');
+                    container.style.removeProperty('min-height');
+                    container.style.removeProperty('--tm3d-card-min-height');
+                }
+            };
+
+            img.addEventListener('load', onImageDone, { once: true });
+            img.addEventListener('error', onImageDone, { once: true });
+        });
+
+        if (pendingCount <= 0) {
+            container.classList.remove('button-spinner');
+            container.removeAttribute('aria-busy');
+            container.style.removeProperty('min-height');
+            container.style.removeProperty('--tm3d-card-min-height');
+            return;
+        }
+
+        setTimeout(() => {
+            this.setCreatedByUsCardsLoading(container, false);
+            container.classList.remove('button-spinner');
+            container.removeAttribute('aria-busy');
+            container.style.removeProperty('min-height');
+            container.style.removeProperty('--tm3d-card-min-height');
+        }, 2000);
 
     }
 
@@ -125,7 +231,8 @@ export default class ConfiguratorUI {
                         // Iterate over the data object to create swatch HTML
                         for (const item of swatchItems) {
                             // Destructure a consistent item shape across groups.
-                            const { name, id, url } = item;
+                            const { name, id, sample_id, url } = item;
+                            const sampleId = sample_id || '';
 
                             // Verify data exists before appending HTML
                             if (id) {
@@ -138,6 +245,7 @@ export default class ConfiguratorUI {
                                                 name="${group.replace('-', '_')}"
                                                 class="wapf-input"
                                                 value="${name}"
+                                                data-sample-id="${sampleId}"
                                                 ${selected && selected.value === name ? 'checked' : ''}
                                             >
 

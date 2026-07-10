@@ -16,7 +16,8 @@
                 \TmThreeViewer\Assets\TM3D_Assets::class,
                 \TmThreeViewer\Ajax\TM3D_Ajax::class,
                 \TmThreeViewer\ColourOptions\TM3D_ColourOptions::class,
-                \TmThreeViewer\CurrentStatus\TM3d_CreatedByUs::class,
+                \TmThreeViewer\CurrentStatus\TM3D_CurrentStatus::class,
+                \TmThreeViewer\CurrentStatus\TM3D_CreatedByUs::class,
                 \TmThreeViewer\Images\TM3D_Images::class,
                 \TmThreeViewer\Model\TM3D_Model::class,
             ];

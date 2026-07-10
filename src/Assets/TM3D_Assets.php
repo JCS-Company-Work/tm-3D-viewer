@@ -22,19 +22,12 @@
         public static function mark_module_script(string $tag, string $handle, string $src): string
         
         {
-
-            // List of script handles that should be treated as modules
-            $modules = [
-                'tm-configurator'
-            ];
-
-            // If the script handle is not in modules array, return the original tag
-            if (!in_array($handle, $modules, true)) {
-                return $tag;
+            // Only the main configurator entry point needs to be a deferred module.
+            if ($handle === 'tm-configurator') {
+                return sprintf('<script type="module" defer src="%s"></script>', esc_url($src));
             }
 
-            // Return the script tag with type="module" for module scripts
-            return sprintf('<script type="module" src="%s"></script>', esc_url($src));
+            return $tag;
 
         }
 

@@ -7,6 +7,25 @@ use TmThreeViewer\Images\TM3D_Images;
 class TM3D_CurrentStatus {
 
     /**
+     * Register REST routes for current status updates.
+     *
+     * @return void
+     */
+    public static function init() {
+
+        add_action('rest_api_init', function () {
+
+            register_rest_route('tm3d/v1', '/product-specifications', [
+                'methods' => 'POST',
+                'callback' => [self::class, 'get_product_specifications'],
+                'permission_callback' => '__return_true',
+            ]);
+
+        });
+
+    }
+
+    /**
      * Render the current status markup as a string so it can be added to shortcode output.
      *
      * @param array $data The data to be used for rendering the current status.
@@ -64,14 +83,13 @@ class TM3D_CurrentStatus {
 
                                 <?php endif; ?>
 
-                                <?php $metal_colour = $data['initial_state']['metal'] ?? ''; ?>
+                                <?php $metal_colour = $data['initial_state']['veneer'] ?? ''; ?>
 
-                                <?php if($metal_colour) : ?>
+                                    <div class="status-metal-edge-wrapper <?php echo $metal_colour ? '' : 'd-none'; ?>">
+                                        <p class="bold" style="display: block;text-align: center;">Metal Edge</p>
+                                        <span class="obj-metal-edge-veneer"><?php echo $metal_colour; ?></span>
+                                    </div>
 
-                                    <p class="bold">Metal Edge</p>
-                                    <span class="obj-metal-edge-veneer"><?php echo $metal_colour; ?></span>
-
-                                <?php endif; ?>
                                 <div class="status-seats"></div>
                             </div>
                             <input type="hidden" name="configured_total" id="configured-total" value="" />
@@ -121,11 +139,10 @@ class TM3D_CurrentStatus {
                                         <p class="status-layer-colour <?php echo implode('-', explode(' ', $base_colour)); ?>-finish"><?php echo $base_colour; ?></p>
                                     </div>
 
-                                    <?php if (!empty($data['selected']['metal']) && !empty($data['selected']['metal']['url'])): ?>
-                                    <div class="obj-metal-edge-veneer status-layer">
+                                    <div class="obj-metal-edge-veneer status-layer <?php echo (!empty($data['initial_state']['veneer'])) ? '' : 'd-none'; ?>">
                                         <div class="status-layer-img">
-                                            <a href="<?php echo esc_url($data['selected']['metal']['url']); ?>"
-                                                data-pswp-src="<?php echo esc_url($data['selected']['metal']['url']); ?>"
+                                            <a href="<?php echo esc_url($data['initial_state']['swatch_urls']['metal']); ?>"
+                                                data-pswp-src="<?php echo esc_url($data['initial_state']['swatch_urls']['metal']); ?>"
                                                 data-pswp-width="886"
                                                 data-pswp-height="187"
                                                 data-pswp-gallery="tm3d-status-gallery">
@@ -135,7 +152,7 @@ class TM3D_CurrentStatus {
                                                     fetchpriority="low"
                                                     width="150"
                                                     height="150"
-                                                    src="<?php echo esc_url($data['selected']['metal']['thumb_url']); ?>"
+                                                    src="<?php echo esc_url($data['initial_state']['swatch_urls']['metal']); ?>"
                                                     alt="Metal Edge Colour image swatch"
                                                 >
                                             </a>
@@ -143,7 +160,6 @@ class TM3D_CurrentStatus {
                                         <p class="status-layer-title">Metal Edge</p>
                                         <p class="status-layer-colour <?php echo implode('-', explode(' ', $metal_colour)); ?>-finish"><?php echo $metal_colour; ?></p>
                                     </div>
-                                    <?php endif; ?>
                                 </div>
                             </div>
                             <div class="swatch-order-wrapper w-100">
@@ -282,36 +298,99 @@ class TM3D_CurrentStatus {
      */
     public static function get_full_tech_specifications($data) {
 
-        $product = wc_get_product( $data['initial_state']['id'] );
-        $specifications = $product ? $product->get_attribute( 'specifications' ) : '';
+        $product_id = isset($data['initial_state']['id']) ? (int) $data['initial_state']['id'] : 0;
+        $spec_data = self::build_specifications_data($product_id);
+        $dimensions = $spec_data['dimensions'] ?? '';
+        $full_spec_html = $spec_data['full_spec_html'] ?? '';
+
+        ?>
+
+        <div class="status-dimensions-container text-center">
+            <p><b>Product Specification</b></p>
+            <p class="status-dimensions"><?php echo esc_html($dimensions); ?></p>
+        </div>
+        <div class="full-tech-specifications flex-col-center">
+            <a href="#" class="full-tech-specs-toggle text-underline">View Full Technical Specification</a>
+            <?php echo $full_spec_html; ?>
+        </div>
+
+        <?php
+
+    }
+
+    /**
+     * REST callback: return parsed technical specification content for a product.
+     *
+     * @param mixed $request
+     * @return array
+     */
+    public static function get_product_specifications($request) {
+
+        $product_id = 0;
+
+        if (is_object($request) && method_exists($request, 'get_json_params')) {
+            $params = $request->get_json_params();
+            $product_id = isset($params['id']) ? (int) $params['id'] : 0;
+        } elseif (is_array($request)) {
+            $product_id = isset($request['id']) ? (int) $request['id'] : 0;
+        }
+
+        if (!$product_id) {
+            return [
+                'success' => false,
+                'message' => 'Missing product id.',
+            ];
+        }
+
+        $spec_data = self::build_specifications_data($product_id);
+
+        return [
+            'success' => true,
+            'dimensions' => $spec_data['dimensions'] ?? '',
+            'full_spec_html' => $spec_data['full_spec_html'] ?? '',
+        ];
+
+    }
+
+    /**
+     * Build dimensions and full specification HTML for a product id.
+     *
+     * @param int $product_id
+     * @return array
+     */
+    private static function build_specifications_data($product_id) {
+
+        $product = wc_get_product($product_id);
+        $specifications = $product ? $product->get_attribute('specifications') : '';
         $dimensions = '';
         $full_spec_html = '';
 
-        if ( $specifications ) {
+        if ($specifications) {
 
             // Split on each occurrence of '###cm Table:'
             $specs = preg_split('/(?=\d{3,4}cm Table:)/', $specifications, -1, PREG_SPLIT_NO_EMPTY);
 
             $full_spec_html .= '<ul class="status-specifications d-none list-none">';
-            
-            foreach ( $specs as $spec ) {
-            
+
+            foreach ($specs as $spec) {
+
                 $size_class = '';
                 $spec = trim($spec);
                 $spec_html = preg_replace('/\s*\|\s*|\r?\n/', '<br>', $spec);
                 $spec_html = preg_replace('/(<br>\s*)([^<]+)(?=<br>|$)/', '$1<span class="table-dimensions">$2</span>', $spec_html, 1);
 
                 // Save the first dimensions line, e.g. "250cm L x 120cm W x 77cm H".
-                if ( '' === $dimensions && preg_match('/(\d{3,4}\s*cm\s*L\s*x\s*\d{2,4}\s*cm\s*W\s*x\s*\d{2,4}\s*cm\s*H)/i', $spec, $dimension_match) ) {
+                if ('' === $dimensions && preg_match('/(\d{3,4}\s*cm\s*L\s*x\s*\d{2,4}\s*cm\s*W\s*x\s*\d{2,4}\s*cm\s*H)/i', $spec, $dimension_match)) {
                     $dimensions = trim($dimension_match[1]);
                 }
 
-                // Wrap only the size (e.g., 250cm) in span, not the word 'Table:'
+                // Wrap only the size (e.g., 250cm) in span, not the word 'Table:'.
                 if (preg_match('/^(\d{3,4})cm Table:/', $spec, $matches)) {
                     $size_class = 'model-' . $matches[1] . 'cm';
                     $spec_html = preg_replace('/^((\d{3,4})cm) Table:/', '<span class="table-size">$2cm</span> Table:', $spec_html, 1);
                 }
-                // Wrap seats in span, in-place
+
+                // Wrap seats in span, in-place.
                 $spec_html = preg_replace('/(Seats:\s*)([\d\s\-–]+\d)/', '$1<span class="table-seats">$2</span>', $spec_html, 1);
 
                 $full_spec_html .= '<li' . ($size_class ? ' class="' . esc_attr($size_class) . '"' : '') . '>' . $spec_html . '</li>';
@@ -321,20 +400,14 @@ class TM3D_CurrentStatus {
 
         } else {
 
-            $full_spec_html = '<p>No technical specifications available.</p>';
-            
-        } ?>
+            $full_spec_html = '<p class="status-specifications-empty">No technical specifications available.</p>';
 
-        <div class="status-dimensions-container text-center">
-            <p><b>Product Specification</b></p> 
-            <p class="status-dimensions"><?php echo esc_html($dimensions); ?></p>
-        </div>
-        <div class="full-tech-specifications flex-col-center">
-            <a href="#" class="full-tech-specs-toggle text-underline">View Full Technical Specification</a>
-            <?php echo $full_spec_html ?? ''; ?>
-        </div>
+        }
 
-        <?php
+        return [
+            'dimensions' => $dimensions,
+            'full_spec_html' => $full_spec_html,
+        ];
 
     }
 }

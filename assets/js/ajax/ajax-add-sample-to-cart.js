@@ -41,7 +41,7 @@ export default class SampleAddToCart {
 
         // Fetch data-sample-id from currently selected top and base
         const selectedTop = document.querySelector('input[name="top_colour"]:checked')?.getAttribute('data-sample-id');
-        const selectedBase = document.querySelector('input[name="base_colour"]:checked')?.getAttribute('data-sample-id');
+        const selectedBase = document.querySelector('input[name="base"]:checked')?.getAttribute('data-sample-id');
 
         // Initialize product IDs array
         let productIds = null;
@@ -238,7 +238,3 @@ export default class SampleAddToCart {
     }
 
 }
-
-document.addEventListener('DOMContentLoaded', function () {
-    new SampleAddToCart();
-});

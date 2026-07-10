@@ -325,10 +325,9 @@ export default class ConfiguratorRules {
             // Base options are grouped into tile/wood, so flatten them for comparison
             const available =
                 optionType === 'base'
-                    ? [
-                        ...(Array.isArray(optionsArray?.tile) ? optionsArray.tile : []),
-                        ...(Array.isArray(optionsArray?.wood) ? optionsArray.wood : [])
-                    ]
+                    ? (Array.isArray(optionsArray?.[this.productData.baseType])
+                        ? optionsArray[this.productData.baseType]
+                        : [])
                     : (Array.isArray(optionsArray) ? optionsArray : []);
 
             const normalizedAvailable = available

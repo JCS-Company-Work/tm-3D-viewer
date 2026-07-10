@@ -24,6 +24,7 @@ export default class CurrentStatus {
     }
 
     init() {
+        this.updateAddToCartButtonValue();
         this.addModelListeners();
         this.updatePrice();
         this.determineModel();
@@ -47,12 +48,29 @@ export default class CurrentStatus {
 
         // Update values on change
         modelSelect.addEventListener('change', () => {
+            const sectionEl = document.querySelector('.current-status-container');
+            const currentStatusEl = document.querySelector('.current-status');
+            if (sectionEl) {
+                sectionEl.classList.add('button-spinner');
+            }
+            if (currentStatusEl) {
+                currentStatusEl.setAttribute('aria-busy', 'true');
+            }
 
             this.updatePrice();
             this.determineModel();
             this.updateSpecText();
             this.updateDimensions();
             this.createQR();
+
+            requestAnimationFrame(() => {
+                if (sectionEl) {
+                    sectionEl.classList.remove('button-spinner');
+                }
+                if (currentStatusEl) {
+                    currentStatusEl.setAttribute('aria-busy', 'false');
+                }
+            });
 
         })
 
@@ -63,6 +81,9 @@ export default class CurrentStatus {
      * @returns {void}
      */
     determineModel() {
+
+        // Re-resolve in case the configurator UI has been rebuilt.
+        this.modelSelect = document.querySelector('.obj-model select');
 
         const selectedOption = this.modelSelect?.selectedOptions?.[0];
 
@@ -166,6 +187,30 @@ export default class CurrentStatus {
     }
 
     /**
+     * Keep WooCommerce add-to-cart button product value in sync with selected product type.
+     * @param {string|null} productId
+     */
+    updateAddToCartButtonValue(productId = null) {
+
+        const addToCartBtn = document.querySelector('.single_add_to_cart_button');
+        if (!addToCartBtn) {
+            return;
+        }
+
+        const resolvedId =
+            productId ||
+            document.querySelector('.obj-product-type .wapf-input:checked')?.id ||
+            addToCartBtn.value;
+
+        if (!resolvedId) {
+            return;
+        }
+
+        addToCartBtn.value = resolvedId;
+
+    }
+
+    /**
      * Update the dimensions text in the status recap based on the currently selected model.
      * @returns {void}
      */
@@ -173,6 +218,7 @@ export default class CurrentStatus {
 
         // Select status price container from DOM
         const statusSpecs = document.querySelector(".status-specifications");
+        if (!statusSpecs) return;
 
         // Find the active spec list item
         const activeLi = statusSpecs.querySelector('li.d-block');
@@ -210,6 +256,9 @@ export default class CurrentStatus {
 
         // Select specification texts from DOM
         const specTexts = document.querySelectorAll(".status-specifications > li");
+        if (!specTexts.length) {
+            return;
+        }
     
         // Determine active spec text based on model class
         const activeSpecText = document.querySelector(`.status-specifications .model-${this.modelClass}`);
@@ -239,6 +288,73 @@ export default class CurrentStatus {
     }
 
     /**
+     * Refresh dimensions and full specification markup for the selected product id.
+     * @param {string|number} productId
+     * @returns {Promise<void>}
+     */
+    async refreshTechnicalSpecifications(productId) {
+
+        if (!productId) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/wp-json/tm3d/v1/product-specifications', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: Number(productId) })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Specifications request failed with status ${response.status}`);
+            }
+
+            const payload = await response.json();
+            if (!payload?.success) {
+                return;
+            }
+
+            const statusDimensions = document.querySelector('.status-dimensions');
+            if (statusDimensions) {
+                statusDimensions.textContent = payload.dimensions || '';
+            }
+
+            const fullSpecContainer = document.querySelector('.full-tech-specifications');
+            if (!fullSpecContainer) {
+                return;
+            }
+
+            // Remove previous dynamic specification nodes but keep the existing toggle anchor and listeners.
+            fullSpecContainer.querySelector('.status-specifications')?.remove();
+            fullSpecContainer.querySelector('.status-specifications-empty')?.remove();
+
+            const temp = document.createElement('div');
+            temp.innerHTML = payload.full_spec_html || '';
+
+            const nextSpecList = temp.querySelector('.status-specifications');
+            const nextEmptyMessage = temp.querySelector('.status-specifications-empty');
+
+            if (nextSpecList) {
+                nextSpecList.classList.add('fade');
+                fullSpecContainer.appendChild(nextSpecList);
+            } else if (nextEmptyMessage) {
+                fullSpecContainer.appendChild(nextEmptyMessage);
+            }
+
+            this.determineModel();
+            this.updateSpecText();
+            this.updateDimensions();
+
+        } catch (error) {
+            console.error('Error fetching technical specifications:', error);
+        }
+
+    }
+
+    /**
      * Show/hide the full technical specifications when the toggle link is clicked.
      * @returns {void}
      */
@@ -247,24 +363,24 @@ export default class CurrentStatus {
         // Select toggle link and specifications container from DOM
         const toggleLink = document.querySelector(".full-tech-specs-toggle");
 
-        // Select specifications container from DOM
-        const statusSpecs = document.querySelector(".status-specifications");
+        // If link is missing or already initialized, exit.
+        if (!toggleLink || toggleLink.dataset.specToggleBound === '1') return;
 
-        // If either element is missing, exit the function
-        if (!toggleLink || !statusSpecs) return;
-
-        // Ensure fade class is present for animation
-        statusSpecs.classList.add("fade");
-        // If not hidden, ensure .show is present
-        if (!statusSpecs.classList.contains("d-none")) {
-            statusSpecs.classList.add("show");
-        }
+        toggleLink.dataset.specToggleBound = '1';
 
         // Add click event listener to toggle link
         toggleLink.addEventListener("click", (e) => {
 
             // Prevent default link behavior
             e.preventDefault();
+
+            // Resolve current spec list at click time because product-type changes replace the node.
+            const statusSpecs = document.querySelector(".status-specifications");
+            if (!statusSpecs) {
+                return;
+            }
+
+            statusSpecs.classList.add("fade");
 
             // Animate fade in/out
             if (statusSpecs.classList.contains("show")) {
@@ -378,6 +494,53 @@ export default class CurrentStatus {
      * @param {HTMLElement} checkedInput 
      */
     updateStatusLayer(checkedInput) {
+        const sectionEl = document.querySelector('.current-status-container');
+        const currentStatusEl = document.querySelector('.current-status');
+        if (sectionEl) {
+            sectionEl.classList.add('button-spinner');
+        }
+        if (currentStatusEl) {
+            currentStatusEl.setAttribute('aria-busy', 'true');
+        }
+
+        // Keep the section spinner visible until async work is done and images settle.
+        const finishLoading = () => {
+            const statusImages = Array.from(document.querySelectorAll('.current-status .status-layer-images img, .current-status .status-image img'));
+            const pendingImages = statusImages.filter(img => img && !img.complete);
+
+            // Clear loading state on the whole Your Creation panel.
+            const clearSpinner = () => {
+                if (sectionEl) {
+                    sectionEl.classList.remove('button-spinner');
+                }
+                if (currentStatusEl) {
+                    currentStatusEl.setAttribute('aria-busy', 'false');
+                }
+            };
+
+            if (!pendingImages.length) {
+                clearSpinner();
+                return;
+            }
+
+            let remaining = pendingImages.length;
+            const onDone = () => {
+                remaining -= 1;
+                if (remaining <= 0) {
+                    clearSpinner();
+                }
+            };
+
+            pendingImages.forEach(img => {
+                img.addEventListener('load', onDone, { once: true });
+                img.addEventListener('error', onDone, { once: true });
+            });
+
+            // Fallback guard to avoid a stuck spinner if an image event never fires.
+            setTimeout(clearSpinner, 1200);
+        };
+
+        let pendingUpdate = null;
 
         // Find swatch group to determine which layer to update
         const swatchGroup = checkedInput ? checkedInput.closest('[class*="obj-"]') : null;
@@ -388,21 +551,50 @@ export default class CurrentStatus {
             objClass = Array.from(swatchGroup.classList).find(cls => cls.startsWith('obj-'));
         }
 
+        // Keep status title in sync when product model/type changes.
+        if (objClass === 'obj-product-type') {
+            const statusTitle = document.querySelector('.status-price-container .status-title');
+            if (statusTitle && checkedInput?.value) {
+                statusTitle.textContent = checkedInput.value;
+            }
+
+            this.updateAddToCartButtonValue(checkedInput?.id || null);
+            pendingUpdate = this.refreshTechnicalSpecifications(checkedInput?.id || null);
+        }
+
         // If top colour changed update all status layers based on selected options
         if (objClass === 'obj-top-colour' || objClass === 'obj-product-type') {
 
             // Get all checked inputs
             const checkedInputs = document.querySelectorAll('.obj-top-colour .wapf-input:checked, .obj-base .wapf-input:checked, .obj-metal-edge-veneer .wapf-input:checked');
 
+            // If no metal is selected in state for the current model/top combo, hide stale metal status layer.
+            const hasSelectedMetal = !!this.state.selectedOptions?.metal;
+
             // Update each layer based on the checked inputs
             checkedInputs.forEach(input => {
                 this.updateSingleLayer(input, input.closest('.obj-top-colour') ? 'obj-top-colour' : (input.closest('.obj-base') ? 'obj-base' : 'obj-metal-edge-veneer'));
             });
 
-            // If no metal is selected in state for the current model/top combo, remove stale metal status layer.
-            const hasSelectedMetal = !!this.state.selectedOptions?.metal;
-            if (!hasSelectedMetal) {
-                document.querySelector('.status-layer-images .obj-metal-edge-veneer')?.remove();
+            const metalEdgeEls = document.querySelectorAll('.current-status .obj-metal-edge-veneer, .current-status .status-metal-edge-wrapper');
+            const metalPriceValue = document.querySelector('.status-price-container .obj-metal-edge-veneer');
+
+            if (hasSelectedMetal) {
+                metalEdgeEls.forEach(el => el.classList.remove('d-none'));
+
+                const selectedMetalInput = document.querySelector('.obj-metal-edge-veneer .wapf-input:checked');
+                const selectedMetalLabel = selectedMetalInput
+                    ? selectedMetalInput.closest('.wapf-swatch')?.querySelector('label')?.textContent?.trim()
+                    : '';
+
+                if (metalPriceValue && selectedMetalLabel) {
+                    metalPriceValue.textContent = selectedMetalLabel;
+                }
+            } else {
+                metalEdgeEls.forEach(el => el.classList.add('d-none'));
+                if (metalPriceValue) {
+                    metalPriceValue.textContent = '';
+                }
             }
 
         } else if (objClass) {
@@ -410,7 +602,21 @@ export default class CurrentStatus {
             // Update single layer based on the checked input in the base or metal groups
             this.updateSingleLayer(checkedInput, objClass);
 
+            if (objClass === 'obj-metal-edge-veneer') {
+                const metalEdgeEls = document.querySelectorAll('.obj-metal-edge-veneer, .status-metal-edge-wrapper');
+                metalEdgeEls.forEach(el => el.classList.remove('d-none'));
+            }
+
         }
+
+        if (pendingUpdate) {
+            Promise.resolve(pendingUpdate).finally(() => {
+                finishLoading();
+            });
+            return;
+        }
+
+        finishLoading();
         
     }
 
@@ -473,10 +679,11 @@ export default class CurrentStatus {
             }
         }
 
-        // // Update product info text in status container
-        // const statusPriceContainer = document.querySelector(`.status-price-container .${objClass}`);
-
-        // statusPriceContainer.textContent = layerName;
+        // Update product info text in status container
+        const statusPriceValue = document.querySelector(`.status-price-container .${objClass}`);
+        if (statusPriceValue && layerName) {
+            statusPriceValue.textContent = layerName;
+        }
 
 
     }

@@ -79,12 +79,14 @@ export default class Configurator {
 
                 // Update the selected product type in the state
                 const productType = input.getAttribute('data-product-type');
+                const collection = input.closest('.collection-wrapper').getAttribute('data-collection');
+                const id = input.id;
 
                 // Rebuild created by us section to reflect the new product
                 this.ui.buildCreatedByUs(input.id);
 
                 // Rebuild the UI for the new product type
-                this.ui.buildUI(input.id, productType, input.closest('.collection-wrapper').getAttribute('data-collection'));
+                this.ui.buildUI(input.id, productType, collection);
 
                 // Update the viewer with the selected product model so downstream rules use the active SKU.
                 const sku = input.dataset.sku;
@@ -111,8 +113,18 @@ export default class Configurator {
                 // Update QR code
                 this.currentStatus.createQR();
 
+                // Keep price block in sync with the newly selected product + default size.
+                const selectedModel = window.TM3DPlugin?.data?.models?.[collection]?.[id] || {};
+                const statusPrice = document.querySelector('.status-price');
+                if (statusPrice && selectedModel?.price !== undefined) {
+                    statusPrice.setAttribute('data-ex-vat-price-base', String(selectedModel.price));
+                }
+                this.currentStatus.updatePrice();
+                this.currentStatus.determineModel();
+                this.currentStatus.updateSpecText();
+                this.currentStatus.updateDimensions();
+
                 // Update the viewer with the selected product type
-                const id = input.id;
                 const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions, id);
 
                 // Clear stale veneer from URL when current model has no metal selection.
@@ -247,6 +259,12 @@ export default class Configurator {
 
         // Get initial state from window.TM3DPlugin.data
         const initialState = window.TM3DPlugin?.data?.initial_state || {};
+        const modelSelect = document.querySelector('.obj-model select');
+        const selectedModelOption = modelSelect?.options?.[modelSelect.selectedIndex];
+        const selectedModelLabel =
+            selectedModelOption?.getAttribute('data-label') ||
+            selectedModelOption?.value ||
+            '';
 
         // Prepare parameters for URL update
         const params = {
@@ -254,7 +272,7 @@ export default class Configurator {
             colour: initialState?.top || '',
             veneer: initialState?.veneer || '',
             secondcolour: initialState?.base || '',
-            model: initialState?.default_model_size || ''
+            model: selectedModelLabel || initialState?.model || initialState?.default_model_size || ''
         };
 
         // Update the URL with the initial state parameters

@@ -227,7 +227,48 @@ export default class ProductViewer {
      */
     updateColourOptions(selectedOptions, productId = null) {
 
-        // Mapping of layer keys from event to our defaults structure
+        // Params returned to URL sync logic in Configurator.js
+        const urlParams = {};
+
+        // Keep first-load and interactive updates on the same mapping logic.
+        this.modelState.queryString = this.buildQueryStringFromSelectedOptions(selectedOptions, productId);
+
+        if (productId) {
+            urlParams.id = productId;
+        }
+
+        // Mapping of layer keys from event to URL keys.
+        const layerMap = {
+            top: 'colour',
+            metal: 'veneer',
+            base: 'secondcolour'
+        };
+
+        // Build URL-facing values from user-facing swatch names.
+        Object.entries(selectedOptions || {}).forEach(([layer, data]) => {
+            const urlKey = layerMap[layer];
+            if (!urlKey || !data?.swatchName) {
+                return;
+            }
+            urlParams[urlKey] = data.swatchName;
+        });
+
+        // Reload the model to reflect the new colour options
+        this.loadModel();
+
+        // Return params for url update in the UI
+        return urlParams;
+
+    }
+
+    /**
+     * Build query string from selected options using the same logic for first load and swatch updates.
+     * @param {object} selectedOptions
+     * @param {string|number|null} productId
+     * @returns {string}
+     */
+    buildQueryStringFromSelectedOptions(selectedOptions = {}, productId = null) {
+
         const layerMap = {
             top: 'colour',
             metal: 'metalcolour',
@@ -235,59 +276,65 @@ export default class ProductViewer {
             meshcolour: 'meshcolour',
             profilecolour: 'profilecolour',
             undercolour: 'undercolour'
-        }
+        };
 
-        // Build an update object based on the event details and our mapping
         const update = {};
 
-        const urlParams = {};
-
-        // Iterate over expected keys and map them to our defaults structure
+        // Normalize selected option payload into mtl.php/obj.php query params.
         for (const [layer, data] of Object.entries(selectedOptions)) {
 
-            // layer will be 'top', 'base', 'metal', etc.
-            // data will be the object for that layer (e.g., { filename, swatchName })
             if (data && data.filename) {
-
-                // Update the corresponding entry in the update object with the cleaned filename
                 update[layerMap[layer]] = data.filename.replace(/\s+/g, '-').toLowerCase();
 
-                // Build URL params (URL key for metal edge is "veneer").
-                const urlKey = layer === 'metal' ? 'veneer' : layerMap[layer];
-                urlParams[urlKey] = data.swatchName;
-
-                // If base, also set secondcolourname as required by mtl.php for the base colour name to show in the UI
                 if (layer === 'base' && data.swatchName) {
-                    update['secondcolourname'] = data.swatchName;
+                    update.secondcolourname = data.swatchName;
                 }
-
-            } else {
-                // These are the fallback values for layers that don't have swatches (mesh, profile, undercolour)
-                // Colours are set on the fly in mtl.php
-                update[layerMap[layer]] = data;
+                continue;
             }
 
+            update[layerMap[layer]] = data;
         }
 
-        // Defaults
-        update.meshcolour = 'meshcolour';
-        update.profilecolour = 'profilecolour';
-        update.undercolour = 'undercolour';
+        update.meshcolour = update.meshcolour || 'meshcolour';
+        update.profilecolour = update.profilecolour || 'profilecolour';
+        update.undercolour = update.undercolour || 'undercolour';
 
-        // Add the product id once
         if (productId) {
             update.id = productId;
-            urlParams.id = productId;
         }
 
-        // Build query string from the update object and update our defaults
-        this.modelState.queryString = this.buildQueryString(update);
+        return this.buildQueryString(update);
 
-        // Reload the model to reflect the new colour options
-        this.loadModel();
+    }
 
-        // Return params for url update in the UI
-        return urlParams;
+    /**
+     * Read currently selected top/base/metal options from the DOM.
+     * @returns {object}
+     */
+    getSelectedOptionsFromDOM() {
+
+        const groups = [
+            { key: 'top', selector: '.obj-top-colour', prefix: 'swatch-' },
+            { key: 'base', selector: '.obj-base', prefix: 'swatch-' },
+            { key: 'metal', selector: '.obj-metal-edge-veneer', prefix: 'banding-' }
+        ];
+
+        const selectedOptions = {};
+
+        // Read currently checked top/base/metal swatches from the DOM
+        // and map them to the selectedOptions payload shape.
+        groups.forEach(({ key, selector, prefix }) => {
+            const filename = this.getSelectedSwatchFilename(selector, prefix);
+            const swatchName = this.getSelectedSwatchName(selector);
+
+            if (!filename || !swatchName) {
+                return;
+            }
+
+            selectedOptions[key] = { filename, swatchName };
+        });
+
+        return selectedOptions;
 
     }
 
@@ -329,15 +376,23 @@ export default class ProductViewer {
         // Get initial layer values from DOM and URL params
         const initialValues = this.getInitialLayerValues();
 
+        // Build selected options from current DOM so first load follows the same path as model/swatch updates.
+        const selectedOptions = this.getSelectedOptionsFromDOM();
+        const initialProductId = document.querySelector('.obj-product-type .wapf-input:checked')?.id || null;
+
         // Ensure first model load reflects URL/default layers even before swatch events fire
-        this.modelState.queryString = this.buildQueryString(initialValues);
+        this.modelState.queryString = Object.keys(selectedOptions).length
+            ? this.buildQueryStringFromSelectedOptions(selectedOptions, initialProductId)
+            : this.buildQueryString(initialValues);
 
         // Determine texture path based on plugin URL or fallback to default path
         const texPath = TM3DPlugin?.url ? TM3DPlugin.url + 'assets/models/textures/' : '/wp-content/plugins/tm-three-viewer/assets/models/textures/';
         
-        // Collect texture URLs from the layer keys only.
-        // secondcolourname is metadata for the base layer name required by buildQueryString, not a texture file so remove it.
-        const textureKeys = Object.keys(initialValues).filter(key => key !== 'secondcolourname');
+        // Collect texture URLs from keys that map to actual texture files.
+        // secondcolourname is metadata for mtl.php.
+        // meshcolour/profilecolour/undercolour are material tokens in mtl.php and are never texture files.
+        const nonTextureKeys = new Set(['secondcolourname', 'meshcolour', 'profilecolour', 'undercolour']);
+        const textureKeys = Object.keys(initialValues).filter(key => !nonTextureKeys.has(key));
         
         // Preload textures for the initial layer values
         const textureURLsByKey = {};
@@ -886,7 +941,10 @@ export default class ProductViewer {
         const initialValues = {
             colour: 'swatch-macchia-vecchia',
             metalcolour: 'banding-brushed-gold',
-            secondcolour: 'swatch-macchia-vecchia'
+            secondcolour: 'swatch-macchia-vecchia',
+            meshcolour: 'meshcolour',
+            profilecolour: 'profilecolour',
+            undercolour: 'undercolour'
         };
 
         // Check the DOM for selected swatches to set initial values
@@ -934,7 +992,10 @@ export default class ProductViewer {
         const urlMap = {
             colour: this.normaliseSwatchSlug(url.searchParams.get('colour'), 'swatch-'),
             metalcolour: this.normaliseSwatchSlug(url.searchParams.get('veneer'), 'banding-'),
-            secondcolour: this.normaliseSwatchSlug(url.searchParams.get('base'), 'swatch-')
+            secondcolour: this.normaliseSwatchSlug(url.searchParams.get('base'), 'swatch-'),
+            profilecolour: this.normaliseSwatchSlug(url.searchParams.get('profilecolour'), ''),
+            undercolour: this.normaliseSwatchSlug(url.searchParams.get('undercolour'), ''),
+            meshcolour: this.normaliseSwatchSlug(url.searchParams.get('meshcolour'), '')
         };
 
         // Iterate over the missing keys and fill them with values from the URL if available

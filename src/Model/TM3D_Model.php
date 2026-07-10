@@ -184,12 +184,12 @@
                                 <ul class="config-option-buttons">
                                     <li class="config-option-product-type">
                                         <div class="config-option-button" id="option-product-type">
-                                            <i class="fa-regular fa-circle-1"></i><span>Product Type</span> Select product type
+                                            <i class="fa-regular fa-circle-1"></i><span>Model</span> Select model
                                         </div>
                                     </li>
                                     <li class="config-option-model">
                                         <div class="config-option-button" id="option-model">
-                                            <i class="fa-regular fa-circle-2"></i><span>Model Size</span> Select size
+                                            <i class="fa-regular fa-circle-2"></i><span>Size</span> Select size
                                         </div>
                                     </li>
                                     <li class="config-option-top-colour">
@@ -308,7 +308,7 @@
                                                     <div class="wapf-field-input">
                                                     <div class="wapf-image-swatch-wrapper wapf-swatch-wrapper" style="--wapf-cols:auto-fill;--apf-col-width:68px">
                                                         
-                                                        <input type="hidden" class="wapf-tf-h" value="0" name="base_colour">
+                                                        <input type="hidden" class="wapf-tf-h" value="0" name="base">
     
                                                         <?php foreach(self::$product_data['master_values'][$product_type]['base'][self::$initial_state['baseType']] as $base) : ?>
     
@@ -317,7 +317,7 @@
                                                                     <input
                                                                         type="radio"
                                                                         id="<?php echo esc_attr($base['sample_id'] ?? ''); ?>"
-                                                                        name="base_colour"
+                                                                        name="base"
                                                                         class="wapf-input"
                                                                         value="<?php echo esc_attr($base['name']); ?>"
                                                                         <?php echo (self::$initial_state['base'] === $base['name']) ? 'checked' : ''; ?>
