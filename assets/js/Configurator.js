@@ -79,7 +79,7 @@ export default class Configurator {
 
                 // Update the selected product type in the state
                 const productType = input.getAttribute('data-product-type');
-                const collection = input.closest('.collection-wrapper').getAttribute('data-collection');
+                const collection = input.closest('.collection-wrapper')?.getAttribute('data-collection') || '';
                 const id = input.id;
 
                 // Rebuild created by us section to reflect the new product
@@ -110,15 +110,25 @@ export default class Configurator {
                  // Schedule a single composite image update regardless of which layer changed
                 this.currentStatus.scheduleCompositeUpdate();
 
-                // Update QR code
-                this.currentStatus.createQR();
-
                 // Keep price block in sync with the newly selected product + default size.
-                const selectedModel = window.TM3DPlugin?.data?.models?.[collection]?.[id] || {};
+                const modelsByCollection = window.TM3DPlugin?.data?.models || {};
+                let selectedModel = modelsByCollection?.[collection]?.[id] || null;
+
+                // Fallback: resolve by product id across all collections when collection context is unavailable.
+                if (!selectedModel) {
+                    for (const models of Object.values(modelsByCollection)) {
+                        if (models && Object.prototype.hasOwnProperty.call(models, id)) {
+                            selectedModel = models[id];
+                            break;
+                        }
+                    }
+                }
+
                 const statusPrice = document.querySelector('.status-price');
                 if (statusPrice && selectedModel?.price !== undefined) {
                     statusPrice.setAttribute('data-ex-vat-price-base', String(selectedModel.price));
                 }
+
                 this.currentStatus.updatePrice();
                 this.currentStatus.determineModel();
                 this.currentStatus.updateSpecText();
@@ -132,7 +142,10 @@ export default class Configurator {
                     urlParams.veneer = '';
                 }
 
-                this.ui.updateURL(urlParams);
+                this.ui.updateURL(urlParams, selectedModel?.permalink || '');
+
+                // Update QR code after the URL is synchronised.
+                this.currentStatus.createQR();
 
                 return;
             }
@@ -152,9 +165,6 @@ export default class Configurator {
                  // Schedule a single composite image update regardless of which layer changed
                 this.currentStatus.scheduleCompositeUpdate();
 
-                // Update QR code
-                this.currentStatus.createQR();
-
                 // Update the viewer with the selected top colour
                 const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions);
 
@@ -164,6 +174,9 @@ export default class Configurator {
                 }
 
                 this.ui.updateURL(urlParams);
+
+                // Update QR code after the URL is synchronised.
+                this.currentStatus.createQR();
 
                 return;
             }
@@ -180,9 +193,6 @@ export default class Configurator {
                 // Schedule a single composite image update regardless of which layer changed
                 this.currentStatus.scheduleCompositeUpdate();
 
-                // Update QR code
-                this.currentStatus.createQR();
-
                 // Update the viewer with the selected options
                 const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions);
 
@@ -192,6 +202,9 @@ export default class Configurator {
                 }
 
                 this.ui.updateURL(urlParams);
+
+                // Update QR code after the URL is synchronised.
+                this.currentStatus.createQR();
 
                 return;
 
@@ -276,7 +289,7 @@ export default class Configurator {
         };
 
         // Update the URL with the initial state parameters
-        this.ui.updateURL(params);
+        this.ui.updateURL(params, initialState?.permalink || '');
 
     }
 
@@ -299,6 +312,7 @@ export default class Configurator {
 
             // Update URL with new model size
             this.ui.updateURL({'model': label});
+            this.updateCartFormAction({'model': label});
 
         });
 
@@ -374,7 +388,6 @@ export default class Configurator {
                 const statusInput = document.querySelector('.obj-top-colour input[type="radio"]:checked');
                 this.currentStatus.updateStatusLayer(statusInput);
                 this.currentStatus.scheduleCompositeUpdate();
-                this.currentStatus.createQR();
 
                 // Update the 3D viewer with the selected options
                 const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions);
@@ -384,6 +397,9 @@ export default class Configurator {
 
                 // Update the URL to reflect the selected configuration
                 this.ui.updateURL(urlParams);
+
+                // Update QR code after the URL is synchronised.
+                this.currentStatus.createQR();
 
                 const modelSection = document.getElementById('3d-model');
                 if (modelSection) {

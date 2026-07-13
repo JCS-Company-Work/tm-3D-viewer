@@ -17,10 +17,54 @@ export default class CurrentStatus {
 
         // Variable to store current model
         this.modelClass = document.querySelector('.current-status-specification').getAttribute('data-current-model-size');
+
+        // Keep loading overlay visible for a minimum duration to avoid flicker.
+        this.statusBusyMinMs = 350;
+        this.statusBusyToken = 0;
+
+        // Track in-flight composite requests so stale responses never win.
+        this._compositeRequestController = null;
         
         // Initialize the class by setting up listeners and updating the status recap
         this.init();
 
+    }
+
+    beginStatusBusy() {
+        const sectionEl = document.querySelector('.current-status-container');
+        const currentStatusEl = document.querySelector('.current-status');
+
+        this.statusBusyToken += 1;
+        const token = this.statusBusyToken;
+        const startMs = Date.now();
+
+        if (sectionEl) {
+            sectionEl.classList.add('button-spinner');
+        }
+
+        if (currentStatusEl) {
+            currentStatusEl.setAttribute('aria-busy', 'true');
+        }
+
+        return () => {
+            const elapsed = Date.now() - startMs;
+            const remaining = Math.max(0, this.statusBusyMinMs - elapsed);
+
+            setTimeout(() => {
+                // Ignore stale completions if a newer loading cycle has started.
+                if (token !== this.statusBusyToken) {
+                    return;
+                }
+
+                if (sectionEl) {
+                    sectionEl.classList.remove('button-spinner');
+                }
+
+                if (currentStatusEl) {
+                    currentStatusEl.setAttribute('aria-busy', 'false');
+                }
+            }, remaining);
+        };
     }
 
     init() {
@@ -48,14 +92,7 @@ export default class CurrentStatus {
 
         // Update values on change
         modelSelect.addEventListener('change', () => {
-            const sectionEl = document.querySelector('.current-status-container');
-            const currentStatusEl = document.querySelector('.current-status');
-            if (sectionEl) {
-                sectionEl.classList.add('button-spinner');
-            }
-            if (currentStatusEl) {
-                currentStatusEl.setAttribute('aria-busy', 'true');
-            }
+            const finishBusy = this.beginStatusBusy();
 
             this.updatePrice();
             this.determineModel();
@@ -64,12 +101,7 @@ export default class CurrentStatus {
             this.createQR();
 
             requestAnimationFrame(() => {
-                if (sectionEl) {
-                    sectionEl.classList.remove('button-spinner');
-                }
-                if (currentStatusEl) {
-                    currentStatusEl.setAttribute('aria-busy', 'false');
-                }
+                finishBusy();
             });
 
         })
@@ -115,17 +147,21 @@ export default class CurrentStatus {
      */
     createQR = () => {
 
-        // Select QR code container from DOM
-        const qrElement = document.querySelector(".qrcode");
+        // Select all QR containers in the current status area.
+        const qrElements = document.querySelectorAll(".qrcode, .status-qrcode");
+
+        if (!qrElements.length) {
+            return;
+        }
 
         // Create a new QRCode instance with error correction level 'H'
         const qr = new QRCode(0, 'H');
 
-        // Extract current url from form action
+        // Extract current url from the cart form action, which is populated from the selected model permalink.
         const form = document.querySelector('form.cart');
 
-        // Create a new URL object from the form's action attribute
-        const url = new URL(form?.action);
+        // Create a new URL object from the cart form action.
+        const url = new URL(form?.action || window.location.href);
 
         // Add all params from the current page's query string to the URL object
         const currentParams = new URLSearchParams(window.location.search);
@@ -142,8 +178,11 @@ export default class CurrentStatus {
         // Add the modified URL to the QR code and generate it
         qr.make();
         
-        // Generate the QR code as an SVG and insert it into the .qrcode element
-        qrElement.innerHTML = qr.createSvgTag({});
+        // Generate the QR code as an SVG and insert it into every QR target so the DOM and PDF stay in sync.
+        const qrSvg = qr.createSvgTag({});
+        qrElements.forEach((qrElement) => {
+            qrElement.innerHTML = qrSvg;
+        });
 
     }
 
@@ -152,6 +191,9 @@ export default class CurrentStatus {
      * @returns {void}
      */
     updatePrice() {
+
+        // Re-resolve model select because product switches rebuild this section.
+        this.modelSelect = document.querySelector('.obj-model select');
 
         // Inc-VAT cost to be displayed to user
         const statusPrice = document.querySelector(".status-price");
@@ -163,7 +205,12 @@ export default class CurrentStatus {
         const configuredTotal = document.getElementById('configured-total');
 
         // Select currently active option el
-        const selectedOption = this.modelSelect.selectedOptions[0];
+        const selectedOption = this.modelSelect?.selectedOptions?.[0];
+
+        // If key inputs are missing, exit safely instead of throwing and breaking downstream updates.
+        if (!statusPrice || !selectedOption) {
+            return;
+        }
 
         // Get base price (ex VAT)
         const basePrice = parseFloat(statusPrice.getAttribute("data-ex-vat-price-base") || "0");
@@ -178,8 +225,12 @@ export default class CurrentStatus {
         const displayPrice = exVatTotal * 1.2;
 
         // Update DOM elements
-        configuredTotal.value = exVatTotal;
-        addToBasketPrice.textContent = `£${displayPrice.toFixed(2)}`;
+        if (configuredTotal) {
+            configuredTotal.value = exVatTotal;
+        }
+        if (addToBasketPrice) {
+            addToBasketPrice.textContent = `£${displayPrice.toFixed(2)}`;
+        }
 
         // Display price to two decimal places
         statusPrice.textContent = `£${displayPrice.toFixed(2)}`;
@@ -476,7 +527,8 @@ export default class CurrentStatus {
             const seats = document.querySelector('li.d-block .table-seats')?.textContent.trim() || '';
 
             // WhatsApp prefers the preview link to be the first/only link
-            let shareText = `${productTitle} - ${tableSize} Table - Seats ${seats}\n${window.location.href}`;
+            const cartUrl = document.querySelector('form.cart')?.action || window.location.href;
+            let shareText = `${productTitle} - ${tableSize} Table - Seats ${seats}\n${cartUrl}`;
 
             // Encode the share text for a valid WhatsApp link
             const whatsappLink = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
@@ -494,14 +546,7 @@ export default class CurrentStatus {
      * @param {HTMLElement} checkedInput 
      */
     updateStatusLayer(checkedInput) {
-        const sectionEl = document.querySelector('.current-status-container');
-        const currentStatusEl = document.querySelector('.current-status');
-        if (sectionEl) {
-            sectionEl.classList.add('button-spinner');
-        }
-        if (currentStatusEl) {
-            currentStatusEl.setAttribute('aria-busy', 'true');
-        }
+        const finishBusy = this.beginStatusBusy();
 
         // Keep the section spinner visible until async work is done and images settle.
         const finishLoading = () => {
@@ -510,12 +555,7 @@ export default class CurrentStatus {
 
             // Clear loading state on the whole Your Creation panel.
             const clearSpinner = () => {
-                if (sectionEl) {
-                    sectionEl.classList.remove('button-spinner');
-                }
-                if (currentStatusEl) {
-                    currentStatusEl.setAttribute('aria-busy', 'false');
-                }
+                finishBusy();
             };
 
             if (!pendingImages.length) {
@@ -766,9 +806,24 @@ export default class CurrentStatus {
             return;
         }
 
-        // Build payload with selected options for top, base and metal (if metal exists)
-        const topSwatch = this.state.selectedOptions?.top?.swatchName;
-        const baseSwatch = this.state.selectedOptions?.base?.swatchName;
+        // Build payload from the currently checked DOM swatches for reliability.
+        const topInput = document.querySelector('.obj-top-colour .wapf-input:checked');
+        const baseInput = document.querySelector('.obj-base .wapf-input:checked');
+        const metalInput = document.querySelector('.obj-metal-edge-veneer .wapf-input:checked');
+
+        const toSwatchLabel = (inputEl) => {
+            if (!inputEl) {
+                return '';
+            }
+
+            return inputEl.closest('.wapf-swatch')?.querySelector('label')?.textContent?.trim()
+                || inputEl.value?.trim()
+                || '';
+        };
+
+        const topSwatch = toSwatchLabel(topInput) || this.state.selectedOptions?.top?.swatchName || '';
+        const baseSwatch = toSwatchLabel(baseInput) || this.state.selectedOptions?.base?.swatchName || '';
+        const metalSwatch = toSwatchLabel(metalInput) || this.state.selectedOptions?.metal?.swatchName || '';
 
         // Top and base are required for the composite endpoint.
         if (!topSwatch || !baseSwatch) {
@@ -781,9 +836,17 @@ export default class CurrentStatus {
         }
 
         // If metal set add to payload
-        if(this.state.selectedOptions.metal) {
-            payload.metal = this.state.selectedOptions.metal.swatchName;
+        if (metalSwatch) {
+            payload.metal = metalSwatch;
         }
+
+        // Abort any previous in-flight request so only the latest composite applies.
+        if (this._compositeRequestController) {
+            this._compositeRequestController.abort();
+        }
+
+        const controller = new AbortController();
+        this._compositeRequestController = controller;
         
         // Trigger image update
         fetch('/wp-json/tm3d/v1/update-product-images/', {
@@ -792,6 +855,7 @@ export default class CurrentStatus {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
             },
+            signal: controller.signal,
             body: JSON.stringify({
                 product_id: Number(productID),
                 selectedLayers: payload
@@ -804,6 +868,10 @@ export default class CurrentStatus {
             return response.json();
         })
         .then(data => {
+            if (this._compositeRequestController !== controller) {
+                return;
+            }
+
             if (!data?.success) {
                 console.warn('Composite update failed:', data?.message || 'Unknown error');
                 return;
@@ -821,6 +889,9 @@ export default class CurrentStatus {
             }
         })
         .catch(error => {
+            if (error?.name === 'AbortError') {
+                return;
+            }
             console.error('Error fetching image:', error);
         });
     }

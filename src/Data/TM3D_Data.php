@@ -44,9 +44,9 @@
             $cached = get_transient('tm3d_colour_options_all');
 
             //If cached data exists, return it
-            // if ($cached !== false) {
-            //     return $cached;
-            // }
+            if ($cached !== false) {
+                return $cached;
+            }
 
             // If no cached data, fetch from Google Sheets (internal call, bypass token)
             TM3D_ColourOptionsData::getDataFromGoogleSheets(true);
@@ -70,9 +70,9 @@
 
             // Check for cached data and return if it exists
             $cached = get_transient('tm3d_product_models');
-            // if (is_array($cached)) {
-            //     return $cached;
-            // }
+            if (is_array($cached)) {
+                return $cached;
+            }
 
             // Get all products that have the ACF field 'acf_3d_model_name'
             // and are not in the 'swatch' or 'swatch-colour' categories
@@ -135,12 +135,11 @@
                             'model_sizes'  => get_post_meta($id, '_tmpa_model_size', true),
                         ];
 
-                        // Get default colour options
-                        $colour_option_keys = ['_tmpa_top_colour', '_tmpa_base_colour', '_tmpa_metal_colour'];
-
-                        foreach ($colour_option_keys as $key) {
-                            $field_values[$id]['default_colour_options'][$key] = get_post_meta($id, $key, true);
-                        }
+                        // Get default colour options from admin meta.
+                        // Top colour can be stored as either tmpa_top_colour or _tmpa_top_colour.
+                        $field_values[$id]['default_colour_options']['_tmpa_top_colour'] = get_post_meta($id, '_tmpa_top_colour', true);
+                        $field_values[$id]['default_colour_options']['_tmpa_base_colour'] = get_post_meta($id, '_tmpa_base_colour', true);
+                        $field_values[$id]['default_colour_options']['_tmpa_metal_colour'] = get_post_meta($id, '_tmpa_metal_colour', true);
 
                         // Add the product to the collection array
                         $products_by_collection[$collection][$id] = $field_values[$id];
@@ -222,7 +221,12 @@
                     $params['top'] = $params['colour'];
                 }
 
-                // If no base is uspplied, default to first valid base as we have a top colour and a product type
+                // Shared URLs use veneer for metal edge; keep an internal metal alias for validation logic.
+                if (!empty($params['veneer']) && empty($params['metal'])) {
+                    $params['metal'] = $params['veneer'];
+                }
+
+                // If no base is supplied, default to first valid base as we have a top colour and a product type
                 if (!self::isValidOption($product_type, 'base', $params)) {
                     $params['base'] = self::$product_data[$product_type]['colour_options'][$hyphenated_colour]['base'][$baseType][0] ?? '';
                 }
@@ -233,6 +237,7 @@
                     // If no metal is supplied, default to first valid metal as we have a top colour and a product type
                     if (!self::isValidOption($product_type, 'metal', $params)) {
                         $params['veneer'] = self::$product_data[$product_type]['colour_options'][$hyphenated_colour]['metal'][0] ?? '';
+                        $params['metal'] = $params['veneer'];
                     }
 
                 }
@@ -293,19 +298,48 @@
          */
         public static function return_defaults() {
 
-            // Product collection
-            $collection = array_key_first(self::$models) ?? '';
-
-            // Get first model from the models array
-            $first_model = reset(self::$models[$collection]) ?? [];
-
-            // Check if default colour options exist for the first model
-            if (empty($first_model['default_colour_options'])) {
+            // Guard against empty model data
+            if (empty(self::$models) || !is_array(self::$models)) {
                 return [];
             }
 
-            // Extract default values from first model
-            $defaults = $first_model['default_colour_options'];
+            // Check ACF for default model ID for the current product page
+            $queried_id = get_queried_object_id();
+            $configured_default_id = (int) get_field('3d_model_default_id', $queried_id);
+
+            // Set selected model to null
+            $selected_model = null;
+
+            // If configured default ID exists, use it to get the model
+            if ($configured_default_id > 0) {
+                $selected_model = self::get_model_by_id($configured_default_id);
+            }
+
+            // If not configured/found, on product pages (excluding swatch products) use current page/product ID
+            if (!$selected_model && function_exists('is_product') && is_product() && $queried_id) {
+                if (!has_term('swatch', 'product_cat', $queried_id)) {
+                    $selected_model = self::get_model_by_id((int) $queried_id);
+                }
+            }
+
+            // Fallback to first item as nothing set
+            if (!$selected_model) {
+                $collection = array_key_first(self::$models) ?? '';
+                $selected_model = reset(self::$models[$collection]) ?? [];
+            }
+
+            // Guard against unresolved/invalid model
+            if (empty($selected_model) || !is_array($selected_model)) {
+                return [];
+            }
+
+            // Check if default colour options exist for the selected model
+            if (empty($selected_model['default_colour_options'])) {
+                return [];
+            }
+
+            // Extract default values from selected model
+            $defaults = $selected_model['default_colour_options'];
 
             // Remove '_tmpa_' and '_colour' from the keys to match parameter names
             $formatted_keys = array_map(
@@ -313,19 +347,24 @@
                 array_keys($defaults)
             );
 
-            // Determine product type from first model ID
-            $product_type = self::get_product_type($first_model['id'] ?? '');
+            // Determine product type from selected model ID
+            $product_type = self::get_product_type($selected_model['id'] ?? '');
 
             // Determine base type based on product category (wood or tile)
-            $base_type = has_term(199, 'product_cat', $first_model['id'] ?? '') ? 'wood' : 'tile';
+            $base_type = has_term(199, 'product_cat', $selected_model['id'] ?? '') ? 'wood' : 'tile';
 
             // Combine formatted keys with their values
             $combined_arr = array_combine($formatted_keys, array_values($defaults));
 
+            // Keep initial-state key compatibility for metal edge values.
+            if (!isset($combined_arr['veneer']) && isset($combined_arr['metal'])) {
+                $combined_arr['veneer'] = $combined_arr['metal'];
+            }
+
             // Determine swatch thumb urls from normalized default keys (top/base/metal)
             $swatch_urls = self::swatchUrls($product_type, $combined_arr, $base_type);
 
-            foreach ($first_model['model_sizes'] ?? [] as $size) {
+            foreach ($selected_model['model_sizes'] ?? [] as $size) {
                 if (!empty($size['is_default'])) {
                     $combined_arr['default_model_size'] = $size['label'] ?? '';
                     break;
@@ -334,16 +373,16 @@
 
             // Add product type, sku, model sizes, base type and swatch urls to the combined array
             $combined_arr += [
-                'id' => $first_model['id'] ?? '',
-                'title' => $first_model['title'] ?? '',
-                'price' => $first_model['price'] ?? '',
-                'sku' => $first_model['sku'] ?? '',
+                'id' => $selected_model['id'] ?? '',
+                'title' => $selected_model['title'] ?? '',
+                'price' => $selected_model['price'] ?? '',
+                'sku' => $selected_model['sku'] ?? '',
                 'product_type' => $product_type,
                 'baseType' => $base_type,
-                'model_sizes' => $first_model['model_sizes'] ?? [],
+                'model_sizes' => $selected_model['model_sizes'] ?? [],
                 'default_model_size' => $combined_arr['default_model_size'] ?? '',
                 'swatch_urls' => $swatch_urls,
-                'permalink' => $first_model['permalink'] ?? '',
+                'permalink' => $selected_model['permalink'] ?? '',
             ];
 
             // Return the combined array of default values
@@ -544,11 +583,50 @@
          */
         public static function isValidOption($product_type, $option_type, $params) {
 
-            // Get valid options
-            $valid_options = self::$product_data[$product_type]['master_values'][$option_type][$params['colour']] ?? [];
+            $requested_value = $params[$option_type] ?? '';
 
-            // Check if the provided option is in the valid options array
-            return in_array($params[$option_type], $valid_options);
+            // Shared URLs expose edge value as veneer; support that alias for metal validation.
+            if ($option_type === 'metal' && empty($requested_value) && !empty($params['veneer'])) {
+                $requested_value = $params['veneer'];
+            }
+
+            if (empty($product_type) || empty($option_type) || empty($params['colour']) || empty($requested_value)) {
+                return false;
+            }
+
+            // Resolve the selected top colour from colour_options using robust key/name matching.
+            $top_option = self::resolveTopColourOption($product_type, $params['colour']);
+            if (empty($top_option)) {
+                return false;
+            }
+
+            // Determine valid values for the requested option in the context of the selected top colour.
+            $valid_options = [];
+
+            if ($option_type === 'base') {
+                $product_id = isset($params['id']) ? (int) $params['id'] : 0;
+                $base_type = has_term(199, 'product_cat', $product_id) ? 'wood' : 'tile';
+                $valid_options = $top_option['base'][$base_type] ?? [];
+            } elseif ($option_type === 'metal') {
+                $valid_options = $top_option['metal'] ?? [];
+            } else {
+                return false;
+            }
+
+            if (!is_array($valid_options) || empty($valid_options)) {
+                return false;
+            }
+
+            // Compare using normalized values so URL spacing/case differences do not invalidate valid options.
+            $requested = self::normalizeColourValue($requested_value);
+
+            foreach ($valid_options as $valid_option) {
+                if (self::normalizeColourValue($valid_option) === $requested) {
+                    return true;
+                }
+            }
+
+            return false;
 
         }
 

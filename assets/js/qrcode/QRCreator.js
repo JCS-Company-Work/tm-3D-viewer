@@ -19,6 +19,10 @@ export default class QRCreator {
         // Select QR code container from DOM
         const qrElement = document.querySelector(".qrcode");
 
+        if (!qrElement) {
+            return;
+        }
+
         // Create a new QRCode instance with error correction level 'H'
         const qr = new QRCode(0, 'H');
 
@@ -56,6 +60,7 @@ export default class QRCreator {
     updateQRCode = () => {
         
         const qrCode = document.querySelector(".qrcode");
+        const qrEl = document.querySelector(".status-qrcode");
 
         if (!qrCode || !qrEl) return;
 

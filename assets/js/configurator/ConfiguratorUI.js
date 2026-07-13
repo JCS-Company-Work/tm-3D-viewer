@@ -349,7 +349,20 @@ export default class ConfiguratorUI {
     updateModels(id, collection) {
 
         // Get the model data for the selected product type and collection
-        const model = window.TM3DPlugin?.data?.models?.[collection]?.[id] || {};
+        const modelsByCollection = window.TM3DPlugin?.data?.models || {};
+        let model = modelsByCollection?.[collection]?.[id] || null;
+
+        // Fallback: resolve by product id across all collections when collection context mismatches.
+        if (!model) {
+            for (const models of Object.values(modelsByCollection)) {
+                if (models && Object.prototype.hasOwnProperty.call(models, id)) {
+                    model = models[id];
+                    break;
+                }
+            }
+        }
+
+        model = model || {};
          
         const modelSelectEl = document.querySelector('.obj-model select');
 
@@ -413,7 +426,7 @@ export default class ConfiguratorUI {
      * @param {object} params - The parameters to update in the URL.
      * @returns {void}
      */
-    updateURL(params = {}) {
+    updateURL(params = {}, productUrl = '') {
 
         // Mapping of parameter keys to URL query parameter names
         const map = {
@@ -424,43 +437,58 @@ export default class ConfiguratorUI {
             'model': 'model'
         };
 
-        // Get current URL object
-        const url = new URL(window.location.href);
+        // Keep the visible browser URL on the current page.
+        const browserUrl = new URL(window.location.href);
+
+        const cartForm = document.querySelector('form.cart');
+
+        // Use the product permalink only for basket/share/pdf flows.
+        const actionBaseUrl = productUrl || cartForm?.getAttribute('data-product-url') || cartForm?.action || window.location.href;
+        const actionUrl = new URL(actionBaseUrl);
 
         // Loop over params and update URL
         for (const [key, value] of Object.entries(params)) {
 
             if (value) {
-
-                // Encode properly with %20
-                const encodedValue = encodeURIComponent(value);
-
                 // Add or update parameter manually
-                url.searchParams.set(map[key], encodedValue);
+                browserUrl.searchParams.set(map[key], value);
+                actionUrl.searchParams.set(map[key], value);
 
             } else {
 
                 // Remove parameter if value is empty
-                url.searchParams.delete(map[key]);
+                browserUrl.searchParams.delete(map[key]);
+                actionUrl.searchParams.delete(map[key]);
 
             }
 
         }
 
         // Manually rebuild query string to prevent + for spaces
-        let queryString = '';
-        url.searchParams.forEach((val, key) => {
-            queryString += `${key}=${val}&`;
-        });
+        const buildUrlString = (url) => {
+            let queryString = '';
+            url.searchParams.forEach((val, key) => {
+                queryString += `${key}=${encodeURIComponent(val)}&`;
+            });
 
-        // remove trailing &
-        queryString = queryString.slice(0, -1); 
+            queryString = queryString.slice(0, -1);
 
-        // Build new URL
-        const newUrl = `${url.origin}${url.pathname}${queryString ? '?' + queryString : ''}`;
+            return `${url.origin}${url.pathname}${queryString ? '?' + queryString : ''}`;
+        };
+
+        const newBrowserUrl = buildUrlString(browserUrl);
+        const newActionUrl = buildUrlString(actionUrl);
 
         // Update browser URL without reload
-        window.history.replaceState({}, '', newUrl);
+        window.history.replaceState({}, '', newBrowserUrl);
+
+        if (cartForm) {
+            cartForm.action = newActionUrl;
+
+            if (productUrl) {
+                cartForm.setAttribute('data-product-url', productUrl);
+            }
+        }
 
     }
 

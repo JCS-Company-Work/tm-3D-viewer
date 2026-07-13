@@ -67,7 +67,7 @@
             if (!$product) return null;
 
             // Get valid colour combinations for current product and options
-            $valid_colours = self::getValidColourCombinations($product);
+            $valid_colours = self::getValidColourCombinations($product, (int) $product->get_id());
 
             // Process layers to get image paths
             $image_layers = self::processLayers($product->get_sku(), $valid_colours);
@@ -96,7 +96,7 @@
          * @param \WC_Product $product The WooCommerce product object.
          * @return array The valid colour combinations.
          */
-        public static function getValidColourCombinations($product) {
+        public static function getValidColourCombinations($product, $product_id = 0) {
 
             // Get colour options data
             $colourOptions = TM3D_Data::getProductData();
@@ -133,7 +133,6 @@
                 if (isset($availableColours['metal']) && is_array($availableColours['metal'])) {
                     if (!in_array($metal, $availableColours['metal'], true)) {
                         $metal = $availableColours['metal'][0] ?? null;
-                        var_dump('metal fallback', $metal);
                     }
                 }
 
@@ -145,9 +144,12 @@
 
             } else {
                 // If no colour param, fallback to defaults (if set) or empty
-                $image_layers['top'] = get_post_meta(get_the_ID(), '_tmpa_top_colour', true);
-                $image_layers['base'] = get_post_meta(get_the_ID(), '_tmpa_base_colour', true);
-                $image_layers['metal'] = get_post_meta(get_the_ID(), '_tmpa_metal_colour', true);
+                $resolved_product_id = (int) ($product_id ?: ($product && method_exists($product, 'get_id') ? $product->get_id() : 0));
+
+                $image_layers['top'] = get_post_meta($resolved_product_id, 'tmpa_top_colour', true)
+                    ?: get_post_meta($resolved_product_id, '_tmpa_top_colour', true);
+                $image_layers['base'] = get_post_meta($resolved_product_id, '_tmpa_base_colour', true);
+                $image_layers['metal'] = get_post_meta($resolved_product_id, '_tmpa_metal_colour', true);
             }
 
             return $image_layers;

@@ -13,7 +13,6 @@
             add_action('wp_ajax_tm3d_add_swatch_to_cart', [__CLASS__, 'ajax_add_swatch_to_cart']);
             add_action('wp_ajax_nopriv_tm3d_add_swatch_to_cart', [__CLASS__, 'ajax_add_swatch_to_cart']);
 
-            add_filter('woocommerce_get_item_data', [__CLASS__, 'tm_add_swatch_note_to_cart_item'], 10, 2);
             add_action('woocommerce_checkout_create_order_line_item', [__CLASS__, 'tm_add_swatch_note_to_order_item'], 10, 3);
 
         }
@@ -167,23 +166,6 @@
                 'cart_hash' => WC()->cart->get_cart_hash(),
             ]);
             exit;
-        }
-
-        /**
-         * Show note in cart & checkout
-         *
-         * @param array $item_data
-         * @param array $cart_item
-         * @return array
-         */
-        public static function tm_add_swatch_note_to_cart_item($item_data, $cart_item) {
-            if (isset($cart_item['swatch_note'])) {
-                $item_data[] = [
-                    'name'  => 'Note',
-                    'value' => esc_html($cart_item['swatch_note'])
-                ];
-            }
-            return $item_data;
         }
 
         /**

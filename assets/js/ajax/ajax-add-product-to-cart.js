@@ -44,8 +44,8 @@ export default class ProductAddToCart {
 
             const productId = addToCartBtn.value || null;
 
-             // Build current page URL with query params
-            const currentUrl = window.location.href;
+            // Build current product URL from the cart form action so the basket stores the configured permalink.
+            const currentUrl = document.querySelector('form.cart')?.action || window.location.href;
 
             // Get top colour from checked radio input
             const topColour = document.querySelector('.obj-top-colour input[type="radio"]:checked').value || '';
