@@ -32,8 +32,18 @@ export default class ConfiguratorRules {
         // Get the SKU of the selected product from the 3D viewer element
         const sku = document.getElementById('obj3dviewer').getAttribute('item-name') || '';
 
-        // Determine the base type based on whether the SKU includes 'wood' or not
-        this.productData.baseType = sku.includes('wood') ? 'wood' : 'tile';
+        // Determine the base type based on whether the SKU includes 'wood' or not.
+        // To prevent stale values when rapidly switching products, also check the selected product's explicit baseType if available.
+        let baseType = sku.includes('wood') ? 'wood' : 'tile';
+        
+        // If the selected product has an explicit baseType data attribute, use that as the source of truth.
+        // This prevents timing issues when switching between wood and tile variants.
+        const selectedProductInput = document.querySelector('.obj-product-type input[type="radio"]:checked');
+        if (selectedProductInput?.dataset?.baseType) {
+            baseType = selectedProductInput.dataset.baseType;
+        }
+        
+        this.productData.baseType = baseType;
 
     }
 
@@ -340,6 +350,14 @@ export default class ConfiguratorRules {
 
 				// Show/hide options
                 el.style.display = normalizedAvailable.includes(label) ? 'inline' : 'none';
+                
+                // If hiding this option and it's currently checked, uncheck it to prevent stale selections
+                if (!normalizedAvailable.includes(label)) {
+                    const input = el.querySelector('input[type="radio"]');
+                    if (input?.checked) {
+                        input.checked = false;
+                    }
+                }
 
             });
 

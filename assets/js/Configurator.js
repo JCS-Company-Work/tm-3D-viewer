@@ -81,6 +81,13 @@ export default class Configurator {
                 const productType = input.getAttribute('data-product-type');
                 const collection = input.closest('.collection-wrapper')?.getAttribute('data-collection') || '';
                 const id = input.id;
+                const sku = input.dataset.sku;
+
+                // Determine base type from SKU for later reference
+                const baseType = sku.includes('wood') ? 'wood' : 'tile';
+                
+                // Store base type on the input as a cache to ensure correct determination even with timing issues
+                input.dataset.baseType = baseType;
 
                 // Rebuild created by us section to reflect the new product
                 this.ui.buildCreatedByUs(input.id);
@@ -89,7 +96,6 @@ export default class Configurator {
                 this.ui.buildUI(input.id, productType, collection);
 
                 // Update the viewer with the selected product model so downstream rules use the active SKU.
-                const sku = input.dataset.sku;
                 this.viewer.setProductModel(sku);
 
                 // Sync rule context from the rebuilt DOM before resolving default options.

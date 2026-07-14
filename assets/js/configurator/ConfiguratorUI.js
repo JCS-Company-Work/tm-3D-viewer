@@ -210,6 +210,9 @@ export default class ConfiguratorUI {
         // Groups to iterate over for building swatches
         const groups = ['top-colour', 'base', 'metal-edge-veneer'];
 
+        // Check if this product uses horizontal bases (in category 239)
+        const isHorizontalBasesProduct = this.isHorizontalBasesProduct(id);
+
         groups.forEach(group => {
             
             // Get the currently selected option for the group
@@ -234,8 +237,8 @@ export default class ConfiguratorUI {
                             const { name, id, sample_id, url } = item;
                             const sampleId = sample_id || '';
 
-                            // Verify data exists before appending HTML
-                            if (id) {
+                            // Verify all required data exists before appending HTML (skip invalid items)
+                            if (id && name && url) {
                                 html += `
                                     <div class="wapf-swatch wapf-swatch--image apf-pick-box">
                                         <label aria-label="${name}">
@@ -266,6 +269,13 @@ export default class ConfiguratorUI {
                         }
 
                         groupContainer.innerHTML = html;
+
+                        // Apply horizontal bases styling if this is a horizontal bases product and group is base
+                        if (group === 'base' && isHorizontalBasesProduct) {
+                            groupContainer.classList.add('horizontal-bases-layout');
+                        } else if (group === 'base') {
+                            groupContainer.classList.remove('horizontal-bases-layout');
+                        }
 
                     } else {
                         console.warn(`Container for group "${group}" not found.`);
@@ -303,17 +313,17 @@ export default class ConfiguratorUI {
         if (group === 'base') {
 
             // Merge wood and tile base options into a single array for rendering
-            const woodBases = Object.values(dataObj?.['wood'] || {});
-            const tileBases = Object.values(dataObj?.['tile'] || {});
+            const woodBases = Object.values(dataObj?.['wood'] || {}).filter(Boolean);
+            const tileBases = Object.values(dataObj?.['tile'] || {}).filter(Boolean);
 
             return [...woodBases, ...tileBases];
         }
 
         if (group === 'metal-edge-veneer') {
-            return Object.values(dataObj || {});
+            return Object.values(dataObj || {}).filter(Boolean);
         }
 
-        return Object.values(dataObj || {});
+        return Object.values(dataObj || {}).filter(Boolean);
     }
 
     /**
@@ -338,6 +348,36 @@ export default class ConfiguratorUI {
 
         };
 
+    }
+
+    /**
+     * Check if a product is in the horizontal bases category (239).
+     * Products in this category display bases horizontally.
+     * @param {string} productId - The WooCommerce product ID
+     * @returns {boolean} True if product is in horizontal bases category
+     */
+    isHorizontalBasesProduct(productId) {
+
+        // Check if product is in the models data with horizontal_bases flag
+        if (productId && window.TM3DPlugin?.data?.models) {
+            const models = window.TM3DPlugin.data.models;
+            
+            // Search through all collections for this product
+            for (const collection in models) {
+                if (models[collection] && models[collection][productId]) {
+                    // Return the horizontal_bases flag from the product data
+                    return models[collection][productId].horizontal_bases === true;
+                }
+            }
+        }
+
+        // Fallback: check if product_data has use_horizontal_bases flag set
+        // This is set by displayHorizontalSwatches() for the initial product
+        if (this.state.colourOptions?.use_horizontal_bases) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

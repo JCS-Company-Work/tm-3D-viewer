@@ -476,8 +476,9 @@ export default class CurrentStatus {
                 // Prevent default link behavior
                 e.preventDefault();
 
-                // Construct the message to be sent via WhatsApp
-                const message = `Hi, I would like to talk to a table specialist about this dining table - ${window.location.href}`;
+                // Construct the message using the configured product URL.
+                const configuredProductUrl = document.querySelector('form.cart')?.action || window.location.href;
+                const message = `Hi, I would like to talk to a table specialist about this dining table - ${configuredProductUrl}`;
 
                 // Encode the message and construct the WhatsApp link
                 const whatsappLink = `https://wa.me/447782274315?text=${encodeURIComponent(message)}`;

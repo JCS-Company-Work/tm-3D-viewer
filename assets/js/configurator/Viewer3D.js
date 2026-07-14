@@ -38,6 +38,9 @@ export default class ProductViewer {
         // Default settings for the viewer
         this.defaults = {};
 
+        // Track if this is the initial model load (for texture preload handling)
+        this.isFirstLoad = true;
+
         // Adjust camera settings based on screen size
         this.setAdjustment();
 
@@ -142,6 +145,12 @@ export default class ProductViewer {
      * @param {int} modelId 
      */
     setProductModel(modelId) {
+
+        // Validate modelId is provided and non-null
+        if (!modelId) {
+            console.warn('[ProductViewer] setProductModel called with invalid modelId:', modelId);
+            return;
+        }
 
         // Update the texture name in state based on the selected model ID
         this.modelState.textureName = modelId;
@@ -252,6 +261,13 @@ export default class ProductViewer {
             }
             urlParams[urlKey] = data.swatchName;
         });
+
+        // Show loading screen before updating the 3D model for swatch changes
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            loadingScreen.style.display = '';
+            loadingScreen.classList.remove('fade-out');
+        }
 
         // Reload the model to reflect the new colour options
         this.loadModel();
@@ -398,17 +414,23 @@ export default class ProductViewer {
         const textureURLsByKey = {};
         textureKeys.forEach(key => {
             const imageName = initialValues?.[key];
-            if (imageName) {
-                textureURLsByKey[key] = texPath + imageName + '.jpg' + (TM3DPlugin?.version ? `?v=${TM3DPlugin.version}` : '');
+            // Only add valid, non-empty image names to prevent loading null/undefined textures
+            if (imageName && typeof imageName === 'string' && imageName.trim()) {
+                textureURLsByKey[key] = texPath + imageName.trim() + '.jpg' + (TM3DPlugin?.version ? `?v=${TM3DPlugin.version}` : '');
             }
         });
 
+        // Filter out any empty texture URLs before preloading
+        const texturesToPreload = Object.values(textureURLsByKey).filter(url => url && url.length > 0);
+
         // Preload textures and initialize the scene once all textures are loaded
-        this.preloadTextures(Object.values(textureURLsByKey))
+        this.preloadTextures(texturesToPreload)
             .then(texturesByUrl => {
                 this.preloadedTextures = {};
                 for (const [key, url] of Object.entries(textureURLsByKey)) {
-                    this.preloadedTextures[key] = texturesByUrl[url];
+                    if (texturesByUrl[url]) {
+                        this.preloadedTextures[key] = texturesByUrl[url];
+                    }
                 }
                 // Initialize scene and related components once
                 if (!this.viewer.scene) {
@@ -685,11 +707,15 @@ export default class ProductViewer {
         const base = TM3DPlugin?.url ? TM3DPlugin.url + 'assets/models' : '';
 
         // Ensure texture name and scene are available before proceeding
-        if (!this.modelState.textureName || !this.viewer.scene) return;
+        const textureName = this.modelState.textureName;
+        if (!textureName || !this.viewer.scene) {
+            console.warn('[ProductViewer] Cannot load model - textureName:', textureName, 'scene:', !!this.viewer.scene);
+            return;
+        }
 
         // Construct URLs for MTL and OBJ files based on the current model state
         const mtlUrl = `${base}/mtl.php${this.modelState.queryString}`;
-        const objUrl = `${base}/${this.modelState.textureName}-obj.php${this.modelState.queryString}`;
+        const objUrl = `${base}/${textureName}-obj.php${this.modelState.queryString}`;
 
         // Load the MTL and OBJ files using Three.js loaders
         const mtlLoader = new MTLLoader();
@@ -730,23 +756,21 @@ export default class ProductViewer {
                 object.position.y = 4.5;
                 object.scale.setScalar(0.1);
 
-                // Traverse the model's hierarchy to apply shadows and preloaded textures
+                // Traverse the model's hierarchy to apply shadows
                 object.traverse(node => {
                     if (node.isMesh) {
                         node.castShadow = true;
-
-                        if (node.material?.name && this.preloadedTextures?.[node.material.name]) {
-                            node.material.map = this.preloadedTextures[node.material.name];
-                            node.material.needsUpdate = true;
-                        }
                     }
                 });
+
+                // Mark first load as complete
+                this.isFirstLoad = false;
 
                 // Add the new model to the scene and update the reference
                 this.viewer.scene.add(object);
                 this.viewer.loadedModel = object;
 
-                // Hide loading overlay once the new model is attached
+                // Fade out loading screen now that model is loaded
                 this.fadeLoading();
 
                 // Animate camera to a new position if it hasn't been animated yet
@@ -1019,22 +1043,14 @@ export default class ProductViewer {
         // If the loading screen element is not found, exit
         if (!loadingScreen) return;
 
-
-        // Add fade-out class
+        // Add fade-out class to trigger CSS animation
         loadingScreen.classList.add('fade-out');
         
-        // Listen for transition end and hide, but keep element for reuse on model changes
-        loadingScreen.addEventListener('transitionend', function handler(e) {
-            if (e.propertyName === 'opacity') {
-                loadingScreen.style.display = 'none';
-            }
-        }, { once: true });
-
-        // Safety fallback in case transitionend doesn't fire
+        // Hide after fade animation completes (300ms should be enough for most transitions)
         setTimeout(() => {
-            if (document.body.contains(loadingScreen)) {
+            if (loadingScreen && document.body.contains(loadingScreen)) {
                 loadingScreen.style.display = 'none';
             }
-        }, 3000);
+        }, 300);
     }
 }
