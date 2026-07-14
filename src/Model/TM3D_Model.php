@@ -312,7 +312,7 @@
     
                                                         <?php foreach(self::$product_data['master_values'][$product_type]['base'][self::$initial_state['baseType']] as $base) : ?>
     
-                                                            <div class="wapf-swatch wapf-swatch--image wapf-single-select apf-pick-box" style="<?php echo (in_array($base['name'], $bases_for_current_top)) ? 'display: inline;' : 'display: none;'; ?>">
+                                                            <div class="wapf-swatch wapf-swatch--image wapf-single-select apf-pick-box" style="<?php echo (in_array($base['name'], $bases_for_current_top) || strtolower(self::$initial_state['base']) === strtolower($base['name'])) ? 'display: inline;' : 'display: none;'; ?>">
                                                                 <label aria-label="<?php echo esc_attr($base['name']); ?>">
                                                                     <input
                                                                         type="radio"
@@ -320,7 +320,7 @@
                                                                         name="base"
                                                                         class="wapf-input"
                                                                         value="<?php echo esc_attr($base['name']); ?>"
-                                                                        <?php echo (self::$initial_state['base'] === $base['name']) ? 'checked' : ''; ?>
+                                                                        <?php echo (strtolower(self::$initial_state['base']) === strtolower($base['name'])) ? 'checked' : ''; ?>
                                                                         data-sample-id="<?php echo esc_attr($base['sample_id'] ?? ''); ?>"
                                                                     >
                                                                     <div>
@@ -347,7 +347,7 @@
 
                                                                 <?php foreach((self::$product_data['master_values'][$product_type]['metal'] ?? []) as $metal) : ?>
 
-                                                                    <div class="wapf-swatch wapf-swatch--image wapf-single-select apf-pick-box" style="<?php echo (in_array($metal['name'], $metals_for_current_top)) ? 'display: inline;' : 'display: none;'; ?>">
+                                                                    <div class="wapf-swatch wapf-swatch--image wapf-single-select apf-pick-box" style="<?php echo (in_array($metal['name'], $metals_for_current_top) || strtolower(self::$initial_state['veneer']) === strtolower($metal['name'])) ? 'display: inline;' : 'display: none;'; ?>">
                                                                         <label aria-label="<?php echo esc_attr($metal['name']); ?>">
                                                                             <input
                                                                                 type="radio"
@@ -355,7 +355,7 @@
                                                                                 class="wapf-input"
                                                                                 id="<?php echo esc_attr($metal['sample_id'] ?? ''); ?>"
                                                                                 value="<?php echo esc_attr($metal['name']); ?>"
-                                                                                <?php echo (self::$initial_state['veneer'] === $metal['name']) ? 'checked' : ''; ?>
+                                                                                <?php echo (strtolower(self::$initial_state['veneer']) === strtolower($metal['name'])) ? 'checked' : ''; ?>
                                                                                 data-sample-id="<?php echo esc_attr($metal['sample_id'] ?? ''); ?>"
                                                                             >
                                                                             <div>

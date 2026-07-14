@@ -280,6 +280,7 @@
                     'baseType' => $baseType,
                     'swatch_urls' => $swatchUrls,
                     'permalink' => $model['permalink'] ?? '',
+                    'collection' => self::determineProductCollection($final_values['id']),
                 ];
 
                 foreach ($final_values['model_sizes'] ?? [] as $size) {
@@ -389,6 +390,7 @@
                 'default_model_size' => $combined_arr['default_model_size'] ?? '',
                 'swatch_urls' => $swatch_urls,
                 'permalink' => $selected_model['permalink'] ?? '',
+                'collection' => self::determineProductCollection($selected_model['id'] ?? ''),
             ];
 
             // Return the combined array of default values

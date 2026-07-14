@@ -38,6 +38,18 @@ export default class Configurator {
         this.updateModel();
         this.syncInitialURLState();
         this.initCreatedByUs();
+        this.setInitialCollection();
+    }
+
+    /**
+     * Update the active collection button to reflect the initial collection from PHP
+     * @returns {void}
+     */
+    setInitialCollection() {
+        const initialCollection = window.TM3DPlugin?.data?.initial_state?.collection;
+        if (initialCollection) {
+            this.showCollection(initialCollection);
+        }
     }
 
     /**
@@ -88,6 +100,11 @@ export default class Configurator {
                 
                 // Store base type on the input as a cache to ensure correct determination even with timing issues
                 input.dataset.baseType = baseType;
+
+                // Update the active collection button to reflect the selected model's collection
+                if (collection) {
+                    this.showCollection(collection);
+                }
 
                 // Rebuild created by us section to reflect the new product
                 this.ui.buildCreatedByUs(input.id);
