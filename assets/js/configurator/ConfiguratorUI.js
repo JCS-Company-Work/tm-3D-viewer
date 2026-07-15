@@ -212,9 +212,9 @@ export default class ConfiguratorUI {
 
         // Check if this product uses horizontal bases (in category 239)
         const isHorizontalBasesProduct = this.isHorizontalBasesProduct(id);
-console.log(`Product ID ${id} is ${isHorizontalBasesProduct ? '' : 'not '}a horizontal bases product.`);
+
         groups.forEach(group => {
-            console.log(group);
+
             // Get the currently selected option for the group
             const selected = document.querySelector(`.obj-${group} input[type="radio"]:checked`);
 
@@ -278,12 +278,12 @@ console.log(`Product ID ${id} is ${isHorizontalBasesProduct ? '' : 'not '}a hori
                         }
 
                         groupContainer.innerHTML = html;
-console.log(group, isHorizontalBasesProduct);
+
                         // Apply horizontal bases styling if this is a horizontal bases product and group is base
                         if (group === 'base' && isHorizontalBasesProduct) {
                             groupContainer.classList.add('horizontal-bases-layout');
                         } else if (group === 'base') {
-                            console.log(group);
+
                             groupContainer.classList.remove('horizontal-bases-layout');
                         }
 

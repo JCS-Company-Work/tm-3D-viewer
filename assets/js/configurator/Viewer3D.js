@@ -21,7 +21,8 @@ export default class ProductViewer {
             textureName: 'default-model',
             queryString: '',
             cameraAnimated: false,
-            shadowName: 'shadow-tt04.jpg'
+            shadowName: 'shadow-tt04.jpg',
+            loadToken: null  // Prevents race conditions between concurrent loadModel() calls
         };
 
         // Viewer state for scene and loaded model
@@ -191,6 +192,8 @@ export default class ProductViewer {
             return;
         }
 
+        console.log('[ProductViewer] setProductModel() called with modelId:', modelId);
+
         // Update the texture name in state based on the selected model ID
         this.modelState.textureName = modelId;
 
@@ -224,6 +227,7 @@ export default class ProductViewer {
             loadingScreen.classList.remove('fade-out');
         }
 
+        console.log('[ProductViewer] setProductModel() → calling loadModel()');
         // Load the new 3D model based on the updated texture name and shadow
         this.loadModel();
 
@@ -275,6 +279,8 @@ export default class ProductViewer {
      */
     updateColourOptions(selectedOptions, productId = null) {
 
+        console.log('[ProductViewer] updateColourOptions() called with productId:', productId, 'selectedOptions:', selectedOptions);
+
         // Params returned to URL sync logic in Configurator.js
         const urlParams = {};
         
@@ -308,6 +314,7 @@ export default class ProductViewer {
             loadingScreen.classList.remove('fade-out');
         }
 
+        console.log('[ProductViewer] updateColourOptions() → calling loadModel() with queryString:', this.modelState.queryString);
         // Reload the model to reflect the new colour options
         this.loadModel();
 
@@ -752,6 +759,13 @@ export default class ProductViewer {
             return;
         }
 
+        // Generate a unique token for this load request to prevent race conditions.
+        // If a newer load request comes in before this one completes, the token 
+        // will be stale and we'll discard the loaded model instead of applying it.
+        const currentLoadToken = Symbol('loadRequest');
+        this.modelState.loadToken = currentLoadToken;
+        console.log('[ProductViewer] loadModel() initiated - token generated, textureName:', textureName, 'base:', textureName);
+
         // Construct URLs for MTL and OBJ files based on the current model state
         const mtlUrl = `${base}/mtl.php${this.modelState.queryString}`;
         const objUrl = `${base}/${textureName}-obj.php${this.modelState.queryString}`;
@@ -771,6 +785,24 @@ export default class ProductViewer {
 
             // Load the OBJ model with the applied materials
             objLoader.load(objUrl, (object) => {
+
+                // Only apply this loaded model if it's still the most recent request.
+                // If a new loadModel() was called, currentLoadToken will be stale
+                // and we discard this model to prevent race condition artifacts.
+                if (this.modelState.loadToken !== currentLoadToken) {
+                    console.warn('[ProductViewer] ⚠️  RACE CONDITION DETECTED: Discarding stale model load (newer request superceded it). textureName:', textureName);
+                    object.traverse((child) => {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(m => m.dispose());
+                            } else {
+                                child.material.dispose();
+                            }
+                        }
+                    });
+                    return;
+                }
 
                 // Remove the previously loaded model from the scene and dispose of its resources
                 if (this.viewer.loadedModel) {
@@ -808,6 +840,7 @@ export default class ProductViewer {
                 // Add the new model to the scene and update the reference
                 this.viewer.scene.add(object);
                 this.viewer.loadedModel = object;
+                console.log('[ProductViewer] ✅ Model successfully loaded and applied to scene - textureName:', textureName);
 
                 // Fade out loading screen now that model is loaded
                 this.fadeLoading();
