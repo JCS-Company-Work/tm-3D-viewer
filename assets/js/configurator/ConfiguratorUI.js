@@ -212,14 +212,14 @@ export default class ConfiguratorUI {
 
         // Check if this product uses horizontal bases (in category 239)
         const isHorizontalBasesProduct = this.isHorizontalBasesProduct(id);
-
+console.log(`Product ID ${id} is ${isHorizontalBasesProduct ? '' : 'not '}a horizontal bases product.`);
         groups.forEach(group => {
-            
+            console.log(group);
             // Get the currently selected option for the group
             const selected = document.querySelector(`.obj-${group} input[type="radio"]:checked`);
 
                 // Normalize source data so every group can use the same destructuring shape.
-                const swatchItems = this.getSwatchItems(group, productType);
+                const swatchItems = this.getSwatchItems(group, productType, id);
 
                 // Build the HTML for the swatches based on the group and data object
                 if(swatchItems.length) {
@@ -234,17 +234,26 @@ export default class ConfiguratorUI {
                         // Iterate over the data object to create swatch HTML
                         for (const item of swatchItems) {
                             // Destructure a consistent item shape across groups.
-                            const { name, id, sample_id, url } = item;
+                            const { name, id, sample_id, url, horizontal_url, horizontal_id } = item;
                             const sampleId = sample_id || '';
 
+                            // For base swatches on horizontal products, use horizontal versions if available
+                            let displayUrl = url;
+                            let displayId = id;
+                            
+                            if (group === 'base' && isHorizontalBasesProduct && horizontal_url) {
+                                displayUrl = horizontal_url;
+                                displayId = horizontal_id || id;
+                            }
+
                             // Verify all required data exists before appending HTML (skip invalid items)
-                            if (id && name && url) {
+                            if (displayId && name && displayUrl) {
                                 html += `
                                     <div class="wapf-swatch wapf-swatch--image apf-pick-box">
                                         <label aria-label="${name}">
                                             <input
                                                 type="radio"
-                                                id="${id}"
+                                                id="${displayId}"
                                                 name="${group.replace('-', '_')}"
                                                 class="wapf-input"
                                                 value="${name}"
@@ -255,7 +264,7 @@ export default class ConfiguratorUI {
                                             <div>
                                                 <img
                                                     class="swatch"
-                                                    src="${url}"
+                                                    src="${displayUrl}"
                                                     alt="${name}"
                                                 >
                                             </div>
@@ -269,11 +278,12 @@ export default class ConfiguratorUI {
                         }
 
                         groupContainer.innerHTML = html;
-
+console.log(group, isHorizontalBasesProduct);
                         // Apply horizontal bases styling if this is a horizontal bases product and group is base
                         if (group === 'base' && isHorizontalBasesProduct) {
                             groupContainer.classList.add('horizontal-bases-layout');
                         } else if (group === 'base') {
+                            console.log(group);
                             groupContainer.classList.remove('horizontal-bases-layout');
                         }
 
@@ -294,11 +304,12 @@ export default class ConfiguratorUI {
      * Normalize source swatch data into a flat array for consistent rendering.
      * @param {string} group
      * @param {string} productType
+     * @param {string} productId - The WooCommerce product ID (used to determine data source for bases)
      * @returns {Array}
      */
-    getSwatchItems(group, productType) {
+    getSwatchItems(group, productType, productId) {
 
-        const dataObj = this.getUIData(group, productType);
+        const dataObj = this.getUIData(group, productType, productId);
 
         if (!dataObj || typeof dataObj !== 'object') {
             return [];
@@ -312,11 +323,16 @@ export default class ConfiguratorUI {
 
         if (group === 'base') {
 
-            // Merge wood and tile base options into a single array for rendering
-            const woodBases = Object.values(dataObj?.['wood'] || {}).filter(Boolean);
-            const tileBases = Object.values(dataObj?.['tile'] || {}).filter(Boolean);
-
-            return [...woodBases, ...tileBases];
+            // Check if this is a nested master_values structure (wood/tile) or flat structure
+            if (dataObj['wood'] || dataObj['tile']) {
+                // Nested structure: merge wood and tile base options into a single array for rendering
+                const woodBases = Object.values(dataObj?.['wood'] || {}).filter(Boolean);
+                const tileBases = Object.values(dataObj?.['tile'] || {}).filter(Boolean);
+                return [...woodBases, ...tileBases];
+            } else {
+                // Flat structure: return all items as-is (already includes horizontal_url/horizontal_id where applicable)
+                return Object.values(dataObj).filter(Boolean);
+            }
         }
 
         if (group === 'metal-edge-veneer') {
@@ -330,9 +346,10 @@ export default class ConfiguratorUI {
      * Extract correct data for current group and product type from state.colourOptions
      * @param {string} group 
      * @param {string} productType 
+     * @param {string} productId - The WooCommerce product ID (used to check horizontal bases flag for base group)
      * @returns {object}
      */
-    getUIData(group, productType) {
+    getUIData(group, productType, productId) {
 
         if(group === 'top-colour') {
 
@@ -340,7 +357,33 @@ export default class ConfiguratorUI {
 
         } else if(group === 'base') {
 
-            return this.state.colourOptions.master_values[productType]?.base || {};
+            // For base swatches, return master_values which contains all bases
+            const baseData = this.state.colourOptions.master_values[productType]?.base || {};
+
+            // Mirror PHP logic: if this is a horizontal product, apply horizontal URLs
+            if (this.isHorizontalBasesProduct(productId)) {
+                const horizontalBases = window.TM3DPlugin?.data?.product_data?.horizontal_bases || {};
+                
+                // Iterate through base data and apply horizontal URLs where available
+                // Handle both nested (wood/tile) and flat structures
+                Object.keys(baseData).forEach(baseKey => {
+                    if (baseKey === 'wood' || baseKey === 'tile') {
+                        // Nested structure: iterate through items within wood/tile
+                        Object.keys(baseData[baseKey]).forEach(baseName => {
+                            if (horizontalBases[baseName]) {
+                                baseData[baseKey][baseName].url = horizontalBases[baseName].url;
+                            }
+                        });
+                    } else {
+                        // Flat structure: apply directly
+                        if (horizontalBases[baseKey]) {
+                            baseData[baseKey].url = horizontalBases[baseKey].url;
+                        }
+                    }
+                });
+            }
+
+            return baseData;
 
         } else if(group === 'metal-edge-veneer') {
 
@@ -351,29 +394,30 @@ export default class ConfiguratorUI {
     }
 
     /**
-     * Check if a product is in the horizontal bases category (239).
-     * Products in this category display bases horizontally.
+     * Check if a product is in the horizontal bases category (239) and is tile-based.
+     * Only tile-based products in cat 239 display bases horizontally.
      * @param {string} productId - The WooCommerce product ID
-     * @returns {boolean} True if product is in horizontal bases category
+     * @returns {boolean} True if product is in horizontal bases category AND is tile-based
      */
     isHorizontalBasesProduct(productId) {
 
-        // Check if product is in the models data with horizontal_bases flag
+        // Check if product is in the models data with use_horizontal_bases flag
         if (productId && window.TM3DPlugin?.data?.models) {
             const models = window.TM3DPlugin.data.models;
             
             // Search through all collections for this product
             for (const collection in models) {
                 if (models[collection] && models[collection][productId]) {
-                    // Return the horizontal_bases flag from the product data
-                    return models[collection][productId].horizontal_bases === true;
+                    const product = models[collection][productId];
+                    // Return true only if product is in cat 239 AND is tile-based (not wood)
+                    return product.use_horizontal_bases === true && product.baseType !== 'wood';
                 }
             }
         }
 
-        // Fallback: check if product_data has use_horizontal_bases flag set
-        // This is set by displayHorizontalSwatches() for the initial product
-        if (this.state.colourOptions?.use_horizontal_bases) {
+        // Fallback: check if product_data has use_horizontal_bases flag set and baseType is tile
+        // This is set by getProductModels() for the initial product
+        if (this.state.colourOptions?.use_horizontal_bases && this.state.colourOptions?.baseType !== 'wood') {
             return true;
         }
 

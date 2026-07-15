@@ -95,12 +95,6 @@ export default class Configurator {
                 const id = input.id;
                 const sku = input.dataset.sku;
 
-                // Determine base type from SKU for later reference
-                const baseType = sku.includes('wood') ? 'wood' : 'tile';
-                
-                // Store base type on the input as a cache to ensure correct determination even with timing issues
-                input.dataset.baseType = baseType;
-
                 // Update the active collection button to reflect the selected model's collection
                 if (collection) {
                     this.showCollection(collection);
@@ -112,20 +106,17 @@ export default class Configurator {
                 // Rebuild the UI for the new product type
                 this.ui.buildUI(input.id, productType, collection);
 
-                // Update the viewer with the selected product model so downstream rules use the active SKU.
-                this.viewer.setProductModel(sku);
-
-                // Sync rule context from the rebuilt DOM before resolving default options.
-                this.rules.setProductData();
-
                 // Reset the top colour selection for the new product type
                 this.rules.resetForProductType(productType);
 
-                // Sync again in case resetForProductType auto-selected a fallback top colour.
-                this.rules.setProductData();
+                // Update the viewer with the selected product model so downstream rules use the active SKU.
+                this.viewer.setProductModel(sku);
                 
                 // Update the available colour options based on the selected top colour
                 this.rules.setColourOptions();
+
+                // Finalize selected options after visibility is set (prevents premature model updates)
+                this.rules.setSelectedOptions();
 
                 // Update the current status layer with the selected product type
                 this.currentStatus.updateStatusLayer(input);
@@ -137,7 +128,7 @@ export default class Configurator {
                 const modelsByCollection = window.TM3DPlugin?.data?.models || {};
                 let selectedModel = modelsByCollection?.[collection]?.[id] || null;
 
-                // Fallback: resolve by product id across all collections when collection context is unavailable.
+                // Resolve by product id across all collections when collection context is unavailable.
                 if (!selectedModel) {
                     for (const models of Object.values(modelsByCollection)) {
                         if (models && Object.prototype.hasOwnProperty.call(models, id)) {
@@ -147,6 +138,7 @@ export default class Configurator {
                     }
                 }
 
+                // Update the price block with the selected model's price if available
                 const statusPrice = document.querySelector('.status-price');
                 if (statusPrice && selectedModel?.price !== undefined) {
                     statusPrice.setAttribute('data-ex-vat-price-base', String(selectedModel.price));
@@ -157,7 +149,7 @@ export default class Configurator {
                 this.currentStatus.updateSpecText();
                 this.currentStatus.updateDimensions();
 
-                // Update the viewer with the selected product type
+                // Update the viewer with the selected product type (do this AFTER all state is ready)
                 const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions, id);
 
                 // Clear stale veneer from URL when current model has no metal selection.
@@ -181,6 +173,9 @@ export default class Configurator {
 
                 // Update the colour options for the selected top colour
                 this.rules.setColourOptions();
+
+                // Rebuild selectedOptions with the new top colour
+                this.rules.setSelectedOptions();
 
                 // Update the current status layer with the selected product type
                 this.currentStatus.updateStatusLayer(input);
@@ -206,6 +201,9 @@ export default class Configurator {
 
             // Base / Metal
             if (group.matches('.obj-base') || group.matches('.obj-metal-edge-veneer')) {
+
+                // Ensure baseType is current before selecting options
+                this.rules.setProductData();
 
                 // Update the selected options for base or metal
                 this.rules.setSelectedOptions();
@@ -333,9 +331,8 @@ export default class Configurator {
             const selectedOption = modelSelect.options[modelSelect.selectedIndex];
             const label = selectedOption.getAttribute('data-label');
 
-            // Update URL with new model size
+            // Update URL with new model size (also updates cart form action)
             this.ui.updateURL({'model': label});
-            this.updateCartFormAction({'model': label});
 
         });
 
@@ -356,78 +353,78 @@ export default class Configurator {
 
         configsContainer.addEventListener('click', (event) => {
 
-                const config = event.target.closest('.created-by-us-configuration');
+            const config = event.target.closest('.created-by-us-configuration');
 
-                if (!config || !configsContainer.contains(config)) {
-                    return;
+            if (!config || !configsContainer.contains(config)) {
+                return;
+            }
+
+            event.preventDefault();
+
+            // Extract top, base, and metal values from the clicked configuration
+            const top = (config.getAttribute('data-top') || '').trim();
+            const base = (config.getAttribute('data-base') || '').trim();
+            const metal = (config.getAttribute('data-metal') || '').trim();
+
+            // Select the corresponding swatches in the UI based on the extracted values
+            if (top) {
+                const topInput = document.querySelector(`.obj-top-colour input[type="radio"][value="${CSS.escape(top)}"]`);
+                if (topInput) {
+                    topInput.checked = true;
+                }
+            }
+
+            // Update product data and colour options based on the selected top colour
+            this.rules.setProductData();
+            this.rules.setColourOptions();
+
+            // Select the corresponding base and metal swatches in the UI based on the extracted values
+            if (base) {
+                const baseInput = document.querySelector(`.obj-base input[type="radio"][value="${CSS.escape(base)}"]`);
+                if (baseInput) {
+                    baseInput.checked = true;
+                }
+            }
+
+            // Select the corresponding metal swatch in the UI based on the extracted value
+            if (metal) {
+                let metalInput = document.querySelector(`.obj-metal-edge-veneer input[type="radio"][value="${CSS.escape(metal)}"]`);
+
+                if (!metalInput) {
+                    const normalizedMetal = metal.replace(/^banding[-_]/i, '');
+                    metalInput = document.querySelector(`.obj-metal-edge-veneer input[type="radio"][value="${CSS.escape(normalizedMetal)}"]`);
                 }
 
-                event.preventDefault();
-
-                // Extract top, base, and metal values from the clicked configuration
-                const top = (config.getAttribute('data-top') || '').trim();
-                const base = (config.getAttribute('data-base') || '').trim();
-                const metal = (config.getAttribute('data-metal') || '').trim();
-
-                // Select the corresponding swatches in the UI based on the extracted values
-                if (top) {
-                    const topInput = document.querySelector(`.obj-top-colour input[type="radio"][value="${CSS.escape(top)}"]`);
-                    if (topInput) {
-                        topInput.checked = true;
-                    }
+                if (metalInput) {
+                    metalInput.checked = true;
                 }
+            }
 
-                // Update product data and colour options based on the selected top colour
-                this.rules.setProductData();
-                this.rules.setColourOptions();
+            // Update product data and selected options based on the chosen configuration
+            this.rules.setProductData();
+            this.rules.setSelectedOptions();
 
-                // Select the corresponding base and metal swatches in the UI based on the extracted values
-                if (base) {
-                    const baseInput = document.querySelector(`.obj-base input[type="radio"][value="${CSS.escape(base)}"]`);
-                    if (baseInput) {
-                        baseInput.checked = true;
-                    }
-                }
+            // Update the current status layer and load/create a composite image update
+            const statusInput = document.querySelector('.obj-top-colour input[type="radio"]:checked');
+            this.currentStatus.updateStatusLayer(statusInput);
+            this.currentStatus.scheduleCompositeUpdate();
 
-                // Select the corresponding metal swatch in the UI based on the extracted value
-                if (metal) {
-                    let metalInput = document.querySelector(`.obj-metal-edge-veneer input[type="radio"][value="${CSS.escape(metal)}"]`);
+            // Update the 3D viewer with the selected options
+            const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions);
+            if (!this.state.selectedOptions?.metal) {
+                urlParams.veneer = '';
+            }
 
-                    if (!metalInput) {
-                        const normalizedMetal = metal.replace(/^banding[-_]/i, '');
-                        metalInput = document.querySelector(`.obj-metal-edge-veneer input[type="radio"][value="${CSS.escape(normalizedMetal)}"]`);
-                    }
+            // Update the URL to reflect the selected configuration
+            this.ui.updateURL(urlParams);
 
-                    if (metalInput) {
-                        metalInput.checked = true;
-                    }
-                }
+            // Update QR code after the URL is synchronised.
+            this.currentStatus.createQR();
 
-                // Update product data and selected options based on the chosen configuration
-                this.rules.setProductData();
-                this.rules.setSelectedOptions();
-
-                // Update the current status layer and load/create a composite image update
-                const statusInput = document.querySelector('.obj-top-colour input[type="radio"]:checked');
-                this.currentStatus.updateStatusLayer(statusInput);
-                this.currentStatus.scheduleCompositeUpdate();
-
-                // Update the 3D viewer with the selected options
-                const urlParams = this.viewer.updateColourOptions(this.state.selectedOptions);
-                if (!this.state.selectedOptions?.metal) {
-                    urlParams.veneer = '';
-                }
-
-                // Update the URL to reflect the selected configuration
-                this.ui.updateURL(urlParams);
-
-                // Update QR code after the URL is synchronised.
-                this.currentStatus.createQR();
-
-                const modelSection = document.getElementById('3d-model');
-                if (modelSection) {
-                    modelSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
+            const modelSection = document.getElementById('3d-model');
+            if (modelSection) {
+                modelSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
 
         });
 

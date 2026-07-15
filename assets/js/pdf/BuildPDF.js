@@ -2,9 +2,6 @@ export default class BuildPDF {
 
     constructor() {
 
-        // Class property to hold model size
-        this.currentModel = null;
-
         // Initialize an empty array to hold PDF elements
         this.elsToAdd = [];
 
@@ -48,7 +45,7 @@ export default class BuildPDF {
 
             const pdfConfig = this.getPDFConfig();
 
-            this.getCurrentModel();
+            //this.getCurrentModel();
             const productPage = document.querySelector(".current-status");
             if (!productPage) {
                 pdfButton.classList.remove('button-spinner');
@@ -113,24 +110,6 @@ export default class BuildPDF {
             }
         });
     };
-
-    /** Method to find current model from content-area div */
-    getCurrentModel() {
-
-        // Select content area div
-        const contentArea = document.querySelector('.content-area');
-
-        // Loop over classes and find our model- class
-        const modelClass = Array.from(contentArea.classList).find(cls => cls.startsWith('model-'));
-
-        if (modelClass) {
-
-            // Set currentModel property with current value
-            this.currentModel = modelClass;
-
-        }
-
-    }
 
     /**
      * Save SKU value globally

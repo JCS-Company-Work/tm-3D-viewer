@@ -26,11 +26,6 @@
             // Check URL for initial product state parameters or defaults
             $initial_state = self::productInitialState();
 
-            // Apply horizontal swatches override if this product is in category 239
-            if (!empty($initial_state['id'])) {
-                self::$product_data = self::displayHorizontalSwatches(self::$product_data, $initial_state['id']);
-            }
-
             return [
                 'models' => self::$models,
                 'product_data' => self::$product_data,
@@ -138,7 +133,8 @@
                             'permalink'          => get_permalink($id),
                             'sku'                => get_field('acf_3d_model_name', $id),
                             'model_sizes'        => get_post_meta($id, '_tmpa_model_size', true),
-                            'horizontal_bases'   => has_term(239, 'product_cat', $id),
+                            'use_horizontal_bases' => has_term(239, 'product_cat', $id),
+                            'baseType'           => has_term(199, 'product_cat', $id) ? 'wood' : 'tile',
                         ];
 
                         // Get default colour options from admin meta.
@@ -281,6 +277,7 @@
                     'swatch_urls' => $swatchUrls,
                     'permalink' => $model['permalink'] ?? '',
                     'collection' => self::determineProductCollection($final_values['id']),
+                    'use_horizontal_bases' => $model['use_horizontal_bases'] ?? false,
                 ];
 
                 foreach ($final_values['model_sizes'] ?? [] as $size) {
@@ -660,61 +657,6 @@
             return null;
         }
 
-        /**
-         * Apply horizontal swatches override for products in category 239 (horizontal swatch products)
-         * For these products, replace base swatch IDs and URLs with horizontal_bases alternatives
-         *
-         * @param array $product_data The product data array containing master_values and horizontal_bases
-         * @param int $product_id The WooCommerce product ID to check
-         * @return array Modified product data with horizontal bases applied if applicable
-         */
-        public static function displayHorizontalSwatches($product_data, $product_id) {
 
-            // Check if this product is in the horizontal swatches category (ID 239)
-            if (!has_term(239, 'product_cat', $product_id)) {
-                return $product_data;
-            }
-
-            // Get the WooCommerce product object
-            $product = wc_get_product($product_id);
-            if (!$product) {
-                return $product_data;
-            }
-
-            // If we have horizontal_bases data, override master_values bases for all product types
-            if (isset($product_data['horizontal_bases']) && is_array($product_data['horizontal_bases'])) {
-
-                // Iterate over all product types in master_values
-                if (isset($product_data['master_values']) && is_array($product_data['master_values'])) {
-                    
-                    foreach ($product_data['master_values'] as $product_type => &$type_data) {
-
-                        // Check if this product type has base colour options
-                        if (isset($type_data['base']) && is_array($type_data['base'])) {
-
-                            // Iterate over base types (wood/tile)
-                            foreach ($type_data['base'] as $base_type => &$base_colours) {
-
-                                // Iterate over each base colour for this type
-                                foreach ($base_colours as $colour_name => &$base_data) {
-
-                                    // If this colour has a horizontal_bases alternative, override the ID and URL
-                                    if (isset($product_data['horizontal_bases'][$colour_name])) {
-                                        $horizontal_base = $product_data['horizontal_bases'][$colour_name];
-                                        $base_data['id'] = $horizontal_base['id'];
-                                        $base_data['url'] = $horizontal_base['url'];
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Mark that this product uses horizontal bases so frontend can apply styling
-            $product_data['use_horizontal_bases'] = true;
-
-            return $product_data;
-        }
 
     }

@@ -41,6 +41,9 @@ export default class ProductViewer {
         // Track if this is the initial model load (for texture preload handling)
         this.isFirstLoad = true;
 
+        // Track if viewer has been initialized (for lazy loading)
+        this.isViewerInitialized = false;
+
         // Adjust camera settings based on screen size
         this.setAdjustment();
 
@@ -49,12 +52,12 @@ export default class ProductViewer {
 
         // Set shadow image based on model type
         this.setShadow();
-        
-        // Initialize 3D scene, camera, renderer, lights, controls, and ground
-        this.initViewer();
 
         // Initialize event listeners (fullscreen, toggle button)
         this.addEventListeners();
+
+        // Defer 3D model initialization until container is in viewport
+        this.deferInitViewerUntilInView();
 
         
     }
@@ -79,6 +82,42 @@ export default class ProductViewer {
         document.addEventListener('fullscreenchange', this.onFullscreenChange);
         document.addEventListener('webkitfullscreenchange', this.onFullscreenChange);
         document.addEventListener('msfullscreenchange', this.onFullscreenChange);
+
+    }
+
+    /**
+     * Defers the 3D viewer initialization until the container element comes into view.
+     * Uses IntersectionObserver to detect when the element is visible in the viewport.
+     * @returns {void}
+     */
+    deferInitViewerUntilInView() {
+
+        // Check if the container exists before setting up the observer
+        if (!this.container) {
+            console.warn('[ProductRenders] Cannot defer init - container not found');
+            return;
+        }
+
+        // Create intersection observer to detect when element enters viewport
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach(entry => {
+                    // Initialize viewer when element becomes visible
+                    if (entry.isIntersecting && !this.isViewerInitialized) {
+                        this.isViewerInitialized = true;
+                        this.initViewer();
+                        // Stop observing after initialization
+                        observer.unobserve(this.container);
+                    }
+                });
+            },
+            {
+                threshold: 0.01 // Trigger when 1% of element is visible
+            }
+        );
+
+        // Start observing the container
+        observer.observe(this.container);
 
     }
 
@@ -238,7 +277,7 @@ export default class ProductViewer {
 
         // Params returned to URL sync logic in Configurator.js
         const urlParams = {};
-
+        
         // Keep first-load and interactive updates on the same mapping logic.
         this.modelState.queryString = this.buildQueryStringFromSelectedOptions(selectedOptions, productId);
 
@@ -318,7 +357,7 @@ export default class ProductViewer {
         if (productId) {
             update.id = productId;
         }
-
+        console.log(update);
         return this.buildQueryString(update);
 
     }

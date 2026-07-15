@@ -149,6 +149,20 @@
             // Get allowed bases for the current top selection from the colour options data
             $bases_for_current_top = $filtered_colour_options[$current_top]['base'][self::$initial_state['baseType'] ?? ''] ?? [];
 
+            // If product uses horizontal swatches, filter the bases for the current top selection accordingly
+            $use_horizontal_bases = self::$initial_state['use_horizontal_bases'] ?? false;
+
+            $bases_master = self::$product_data['master_values'][$product_type]['base'][self::$initial_state['baseType']];
+
+            // Check current bases against horizontal swatches and update if there is a match
+            if($use_horizontal_bases) {
+                foreach($bases_master as &$base) {
+                    if(isset(self::$product_data['horizontal_bases'][$base['name']])) {
+                        $base['url'] = self::$product_data['horizontal_bases'][$base['name']]['url'] ?? $base['url'];
+                    }
+                }
+            }
+
             // Get allowed metals for the current top selection from the colour options data
             $metals_for_current_top = $filtered_colour_options[$current_top]['metal'] ?? [];
 
@@ -310,7 +324,7 @@
                                                         
                                                         <input type="hidden" class="wapf-tf-h" value="0" name="base">
     
-                                                        <?php foreach(self::$product_data['master_values'][$product_type]['base'][self::$initial_state['baseType']] as $base) : ?>
+                                                        <?php foreach($bases_master as $base) : ?>
     
                                                             <div class="wapf-swatch wapf-swatch--image wapf-single-select apf-pick-box" style="<?php echo (in_array($base['name'], $bases_for_current_top) || strtolower(self::$initial_state['base']) === strtolower($base['name'])) ? 'display: inline;' : 'display: none;'; ?>">
                                                                 <label aria-label="<?php echo esc_attr($base['name']); ?>">

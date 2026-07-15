@@ -29,18 +29,28 @@ export default class ConfiguratorRules {
         // Get product type from current selected product type and set globally available
         this.productData.type = document.querySelector('.obj-product-type input[type="radio"]:checked')?.getAttribute('data-product-type') || '';
 
-        // Get the SKU of the selected product from the 3D viewer element
+        // Get the SKU and ID of the selected product
         const sku = document.getElementById('obj3dviewer').getAttribute('item-name') || '';
+        const selectedProductId = document.querySelector('.obj-product-type input[type="radio"]:checked')?.id || '';
 
-        // Determine the base type based on whether the SKU includes 'wood' or not.
-        // To prevent stale values when rapidly switching products, also check the selected product's explicit baseType if available.
-        let baseType = sku.includes('wood') ? 'wood' : 'tile';
+        // Determine base type - source of truth is the product's database category (category 199 = wood)
+        let baseType = 'tile';  // default to tile
         
-        // If the selected product has an explicit baseType data attribute, use that as the source of truth.
-        // This prevents timing issues when switching between wood and tile variants.
-        const selectedProductInput = document.querySelector('.obj-product-type input[type="radio"]:checked');
-        if (selectedProductInput?.dataset?.baseType) {
-            baseType = selectedProductInput.dataset.baseType;
+        // Priority 1: Get baseType from the PHP-provided initial_state via wp_localize_script (for initial page load)
+        if (window.TM3DInitialState?.baseType && selectedProductId === window.TM3DInitialState?.id) {
+            baseType = window.TM3DInitialState.baseType;
+        } else if (window.TM3DPlugin?.data?.models) {
+            // Priority 2: Look up the product in the models data by collection to find its baseType
+            const models = window.TM3DPlugin.data.models;
+            for (const collection in models) {
+                if (models[collection] && models[collection][selectedProductId]) {
+                    const model = models[collection][selectedProductId];
+                    if (model.baseType) {
+                        baseType = model.baseType;
+                        break;
+                    }
+                }
+            }
         }
         
         this.productData.baseType = baseType;
@@ -116,8 +126,7 @@ export default class ConfiguratorRules {
         // Loop over available options and update the UI accordingly (e.g., show/hide or enable/disable options)
         this.showHideOptions();
 
-        // Finalize selected options after availability has been applied in the UI
-        this.setSelectedOptions();
+        // Note: setSelectedOptions() is called separately from the Configurator to control event timing
 
     }
 
@@ -139,6 +148,9 @@ export default class ConfiguratorRules {
      */
     setSelectedOptions() {
 
+        // Collect inputs to check at the end (after state is populated)
+        const inputsToCheck = [];
+
         // Loop over optionToClass and log key/class
         Object.entries(this.optionToClass).forEach(([key, className]) => {
 
@@ -149,7 +161,9 @@ export default class ConfiguratorRules {
             this.setMetalEdgeState(className, swatchesGroup);
 
             // If no swatches found for this group, skip to next iteration
-            if(!swatchesGroup) return;
+            if(!swatchesGroup) {
+                return;
+            }
 
             // If there are swatches find the currently checked option for this group
             const checkedSwatch = swatchesGroup.querySelector('input[type="radio"]:checked')?.closest('.wapf-swatch');
@@ -157,7 +171,7 @@ export default class ConfiguratorRules {
             // Normalize available option names for robust comparisons.
             const availableList = this.availableList(key, className)
                 .map(option => String(option).toLowerCase().trim());
-
+            
             // Set up selectedOption variable to hold final value
             let selectedOption = checkedSwatch || null;
 
@@ -179,12 +193,6 @@ export default class ConfiguratorRules {
                 return;
             }
 
-            // Check the input inside the swatch to update the form state.
-            const selectedInput = selectedOption.querySelector('input');
-            if (selectedInput) {
-                selectedInput.checked = true;
-            }
-
             // Extract the image file name from the selected option to use as the default option value
             // Add colour and file name to object of defaults to be sent in the custom event
             const swatchImage = selectedOption.querySelector('.swatch');
@@ -196,30 +204,41 @@ export default class ConfiguratorRules {
                 return;
             }
 
-            // Build object with options for each layer
+            // Build object with options for each layer - BEFORE checking the input
             this.state.selectedOptions[key] = {
                 filename: imgFileName,
                 swatchName: selectedLabel
             };
+
+            // Add input to list for checking after all state is populated
+            const selectedInput = selectedOption.querySelector('input');
+            if (selectedInput) {
+                inputsToCheck.push(selectedInput);
+            }
 
         });
 
         // Also include the selected top colour as part of the defaults
         const topColour = this.productData.topColour;
 
-        if (!topColour) return;
+        if (topColour) {
+            // Extract the image file name from the selected top colour swatch to use as the default option value
+            const topSwatchImage = document.querySelector(`.obj-top-colour input[type="radio"][value="${topColour}"]`)?.parentElement?.querySelector('.swatch');
+            const topFileName = this.getImageFileName(topSwatchImage);
 
-        // Extract the image file name from the selected top colour swatch to use as the default option value
-        const topSwatchImage = document.querySelector(`.obj-top-colour input[type="radio"][value="${topColour}"]`)?.parentElement?.querySelector('.swatch');
-        const topFileName = this.getImageFileName(topSwatchImage);
+            if (topFileName) {
+                // Add the selected top colour to the selectedOptions object
+                this.state.selectedOptions.top = { 
+                    filename: topFileName,
+                    swatchName: topColour.trim()
+                };
+            }
+        }
 
-        if (!topFileName) return;
-
-        // Add the selected top colour to the selectedOptions object
-        this.state.selectedOptions.top = { 
-            filename: topFileName,
-            swatchName: topColour.trim()
-        };
+        // NOW check all the inputs after selectedOptions is fully populated
+        inputsToCheck.forEach(input => {
+            input.checked = true;
+        });
 
     }
 
@@ -235,12 +254,14 @@ export default class ConfiguratorRules {
         if(className === 'base') {
 
             // Get the list of available options for the selected top colour and product type
-            return this.state.colourOptions?.[this.productData.type]?.colour_options?.[this.productData.formattedTopColour]?.[optionType]?.[this.productData.baseType] ?? [];
+            const bases = this.state.colourOptions?.[this.productData.type]?.colour_options?.[this.productData.formattedTopColour]?.[optionType]?.[this.productData.baseType] ?? [];
+            return bases;
 
         } 
 
         // For other option types (e.g., 'metal'), return the available options for the selected top colour and product type
-        return this.state.colourOptions?.[this.productData.type]?.colour_options?.[this.productData.formattedTopColour]?.[optionType] ?? [];
+        const options = this.state.colourOptions?.[this.productData.type]?.colour_options?.[this.productData.formattedTopColour]?.[optionType] ?? [];
+        return options;
     }
 
     /**
@@ -291,7 +312,7 @@ export default class ConfiguratorRules {
         const swatches = groupSwatches.querySelectorAll('.wapf-swatch');
 
         // Find the first available option in the DOM and select it
-        return Array.from(swatches).find(el => {
+        const found = Array.from(swatches).find(el => {
 
             // Skip swatches currently hidden by availability rules.
             if (el.style.display === 'none') {
@@ -300,11 +321,14 @@ export default class ConfiguratorRules {
 
             // Extract option name from label and compare with available options
             const label = el.querySelector('label')?.textContent?.toLowerCase().trim() || '';
+            const isInList = availableList.includes(label);
 
             // Return true if this option is in the list of available options for the selected top colour
-            return availableList.includes(label);
+            return isInList;
 
         });
+        
+        return found;
 
     }
 
@@ -333,12 +357,12 @@ export default class ConfiguratorRules {
             const optionElements = document.querySelectorAll(`.obj-${layerType} .wapf-swatch`);
 
             // Base options are grouped into tile/wood, so flatten them for comparison
-            const available =
-                optionType === 'base'
-                    ? (Array.isArray(optionsArray?.[this.productData.baseType])
-                        ? optionsArray[this.productData.baseType]
-                        : [])
-                    : (Array.isArray(optionsArray) ? optionsArray : []);
+            let available = [];
+            if (optionType === 'base') {
+                available = this.state.colourOptions?.[this.productData.type]?.colour_options?.[this.productData.formattedTopColour]?.base?.[this.productData.baseType] ?? [];
+            } else if (optionType === 'metal') {
+                available = this.state.colourOptions?.[this.productData.type]?.colour_options?.[this.productData.formattedTopColour]?.metal ?? [];
+            }
 
             const normalizedAvailable = available
                 .map(option => String(option).toLowerCase().trim());
@@ -347,12 +371,13 @@ export default class ConfiguratorRules {
 
                 // Extract option name from label and compare with available options
                 const label = el.querySelector('label').textContent.toLowerCase().trim();
+                const shouldShow = normalizedAvailable.includes(label);
 
 				// Show/hide options
-                el.style.display = normalizedAvailable.includes(label) ? 'inline' : 'none';
+                el.style.display = shouldShow ? 'inline' : 'none';
                 
                 // If hiding this option and it's currently checked, uncheck it to prevent stale selections
-                if (!normalizedAvailable.includes(label)) {
+                if (!shouldShow) {
                     const input = el.querySelector('input[type="radio"]');
                     if (input?.checked) {
                         input.checked = false;
