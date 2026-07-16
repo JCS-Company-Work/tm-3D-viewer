@@ -21,8 +21,7 @@ export default class ProductViewer {
             textureName: 'default-model',
             queryString: '',
             cameraAnimated: false,
-            shadowName: 'shadow-tt04.jpg',
-            loadToken: null  // Prevents race conditions between concurrent loadModel() calls
+            shadowName: 'shadow-tt04.jpg'
         };
 
         // Viewer state for scene and loaded model
@@ -192,8 +191,6 @@ export default class ProductViewer {
             return;
         }
 
-        console.log('[ProductViewer] setProductModel() called with modelId:', modelId);
-
         // Update the texture name in state based on the selected model ID
         this.modelState.textureName = modelId;
 
@@ -226,10 +223,6 @@ export default class ProductViewer {
             loadingScreen.style.display = '';
             loadingScreen.classList.remove('fade-out');
         }
-
-        console.log('[ProductViewer] setProductModel() → calling loadModel()');
-        // Load the new 3D model based on the updated texture name and shadow
-        this.loadModel();
 
     }
 
@@ -279,8 +272,6 @@ export default class ProductViewer {
      */
     updateColourOptions(selectedOptions, productId = null) {
 
-        console.log('[ProductViewer] updateColourOptions() called with productId:', productId, 'selectedOptions:', selectedOptions);
-
         // Params returned to URL sync logic in Configurator.js
         const urlParams = {};
         
@@ -307,16 +298,10 @@ export default class ProductViewer {
             urlParams[urlKey] = data.swatchName;
         });
 
-        // Show loading screen before updating the 3D model for swatch changes
-        const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) {
-            loadingScreen.style.display = '';
-            loadingScreen.classList.remove('fade-out');
-        }
 
-        console.log('[ProductViewer] updateColourOptions() → calling loadModel() with queryString:', this.modelState.queryString);
-        // Reload the model to reflect the new colour options
-        this.loadModel();
+        // Single orchestrated load: state complete, all parameters ready
+        // Pass queryString to loadModel so it captures this specific state snapshot
+        this.loadModel(this.modelState.textureName, this.modelState.queryString);
 
         // Return params for url update in the UI
         return urlParams;
@@ -348,7 +333,7 @@ export default class ProductViewer {
             if (data && data.filename) {
                 update[layerMap[layer]] = data.filename.replace(/\s+/g, '-').toLowerCase();
 
-                if (layer === 'base' && data.swatchName) {
+                if (layer === 'base') {
                     update.secondcolourname = data.swatchName;
                 }
                 continue;
@@ -364,7 +349,7 @@ export default class ProductViewer {
         if (productId) {
             update.id = productId;
         }
-        console.log(update);
+
         return this.buildQueryString(update);
 
     }
@@ -747,28 +732,26 @@ export default class ProductViewer {
      * Loads the OBJ model and applies preloaded materials
      * @returns {void}
      */
-    loadModel() {
+    loadModel(textureName = null, queryString = null) {
 
         // Add base path constant from DOM 
         const base = TM3DPlugin?.url ? TM3DPlugin.url + 'assets/models' : '';
 
+        // Use passed parameters (current state snapshot) or fall back to modelState
+        // Passed parameters ensure async completion uses the state THIS call captured,
+        // not whatever the shared modelState has become while we were loading
+        const finalTextureName = textureName || this.modelState.textureName;
+        const finalQueryString = queryString || this.modelState.queryString;
+
         // Ensure texture name and scene are available before proceeding
-        const textureName = this.modelState.textureName;
-        if (!textureName || !this.viewer.scene) {
-            console.warn('[ProductViewer] Cannot load model - textureName:', textureName, 'scene:', !!this.viewer.scene);
+        if (!finalTextureName || !this.viewer.scene) {
+            console.warn('[ProductViewer] Cannot load model - textureName:', finalTextureName, 'scene:', !!this.viewer.scene);
             return;
         }
 
-        // Generate a unique token for this load request to prevent race conditions.
-        // If a newer load request comes in before this one completes, the token 
-        // will be stale and we'll discard the loaded model instead of applying it.
-        const currentLoadToken = Symbol('loadRequest');
-        this.modelState.loadToken = currentLoadToken;
-        console.log('[ProductViewer] loadModel() initiated - token generated, textureName:', textureName, 'base:', textureName);
-
-        // Construct URLs for MTL and OBJ files based on the current model state
-        const mtlUrl = `${base}/mtl.php${this.modelState.queryString}`;
-        const objUrl = `${base}/${textureName}-obj.php${this.modelState.queryString}`;
+        // Construct URLs for MTL and OBJ files using captured state
+        const mtlUrl = `${base}/mtl.php${finalQueryString}`;
+        const objUrl = `${base}/${finalTextureName}-obj.php${finalQueryString}`;
 
         // Load the MTL and OBJ files using Three.js loaders
         const mtlLoader = new MTLLoader();
@@ -785,24 +768,6 @@ export default class ProductViewer {
 
             // Load the OBJ model with the applied materials
             objLoader.load(objUrl, (object) => {
-
-                // Only apply this loaded model if it's still the most recent request.
-                // If a new loadModel() was called, currentLoadToken will be stale
-                // and we discard this model to prevent race condition artifacts.
-                if (this.modelState.loadToken !== currentLoadToken) {
-                    console.warn('[ProductViewer] ⚠️  RACE CONDITION DETECTED: Discarding stale model load (newer request superceded it). textureName:', textureName);
-                    object.traverse((child) => {
-                        if (child.geometry) child.geometry.dispose();
-                        if (child.material) {
-                            if (Array.isArray(child.material)) {
-                                child.material.forEach(m => m.dispose());
-                            } else {
-                                child.material.dispose();
-                            }
-                        }
-                    });
-                    return;
-                }
 
                 // Remove the previously loaded model from the scene and dispose of its resources
                 if (this.viewer.loadedModel) {
@@ -840,7 +805,6 @@ export default class ProductViewer {
                 // Add the new model to the scene and update the reference
                 this.viewer.scene.add(object);
                 this.viewer.loadedModel = object;
-                console.log('[ProductViewer] ✅ Model successfully loaded and applied to scene - textureName:', textureName);
 
                 // Fade out loading screen now that model is loaded
                 this.fadeLoading();
@@ -1020,8 +984,14 @@ export default class ProductViewer {
         // Find the swatch image element associated with the checked input
         const swatchEl = checkedInput.closest('.wapf-swatch')?.querySelector('.swatch');
         
-        // If no swatch image element is found, return an empty string
-        const filename = this.getImageFileName(swatchEl);
+        // Try to extract filename from image src (for WP attachments)
+        let filename = this.getImageFileName(swatchEl);
+        
+        // Fallback: if image filename extraction fails, use input value or aria-label
+        if (!filename) {
+            const label = checkedInput.closest('label');
+            filename = label?.getAttribute('aria-label') || checkedInput.value;
+        }
         
         // Normalize the filename to ensure it has the correct prefix and format
         return this.normaliseSwatchSlug(filename, prefix);

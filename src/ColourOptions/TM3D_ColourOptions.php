@@ -11,16 +11,6 @@
     class TM3D_ColourOptions {
 
         public static function init() {
-
-            // Register REST API endpoint to fetch colour options
-            add_action('rest_api_init', function () {
-
-                register_rest_route('tm3d/v1', '/colour-options', [
-                    'methods' => 'GET',
-                    'callback' => [TM3D_ColourOptionsService::class, 'getColourOptions'],
-                    'permission_callback' => '__return_true',
-                ]);
-            });
             
             // API endpoint to update colour options 
             add_action('rest_api_init', function () {

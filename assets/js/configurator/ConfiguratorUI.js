@@ -324,14 +324,22 @@ export default class ConfiguratorUI {
         if (group === 'base') {
 
             // Check if this is a nested master_values structure (wood/tile) or flat structure
+            console.log(`[getSwatchItems base] dataObj keys: ${Object.keys(dataObj).join(', ')}`);
+            console.log(`[getSwatchItems base] dataObj:`, dataObj);
+            
             if (dataObj['wood'] || dataObj['tile']) {
                 // Nested structure: merge wood and tile base options into a single array for rendering
                 const woodBases = Object.values(dataObj?.['wood'] || {}).filter(Boolean);
                 const tileBases = Object.values(dataObj?.['tile'] || {}).filter(Boolean);
-                return [...woodBases, ...tileBases];
+                console.log(`[getSwatchItems base] wood: ${woodBases.length}, tile: ${tileBases.length}`, woodBases, tileBases);
+                const result = [...woodBases, ...tileBases];
+                console.log(`[getSwatchItems base] returning: ${result.length} items`, result);
+                return result;
             } else {
                 // Flat structure: return all items as-is (already includes horizontal_url/horizontal_id where applicable)
-                return Object.values(dataObj).filter(Boolean);
+                const result = Object.values(dataObj).filter(Boolean);
+                console.log(`[getSwatchItems base] flat structure: ${result.length} items`, result);
+                return result;
             }
         }
 

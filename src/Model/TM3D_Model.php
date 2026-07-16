@@ -156,9 +156,9 @@
 
             // Check current bases against horizontal swatches and update if there is a match
             if($use_horizontal_bases) {
-                foreach($bases_master as &$base) {
+                foreach($bases_master as $key => $base) {
                     if(isset(self::$product_data['horizontal_bases'][$base['name']])) {
-                        $base['url'] = self::$product_data['horizontal_bases'][$base['name']]['url'] ?? $base['url'];
+                        $bases_master[$key]['url'] = self::$product_data['horizontal_bases'][$base['name']]['url'] ?? $base['url'];
                     }
                 }
             }
