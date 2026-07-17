@@ -435,11 +435,11 @@ export default class CurrentStatus {
             if (statusSpecs.classList.contains('is-open')) {
                 statusSpecs.style.maxHeight = '0px';
                 statusSpecs.classList.remove('is-open');
-                toggleLink.textContent = "Hide Full Technical Specification";
+                toggleLink.textContent = "View Full Technical Specification";
             } else {
                 statusSpecs.classList.add('is-open');
                 statusSpecs.style.maxHeight = statusSpecs.scrollHeight + 'px';
-                toggleLink.textContent = "View Full Technical Specification";
+                toggleLink.textContent = "Hide Full Technical Specification";
             }
 
 
