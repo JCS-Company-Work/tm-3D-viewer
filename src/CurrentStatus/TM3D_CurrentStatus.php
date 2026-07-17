@@ -97,8 +97,8 @@ class TM3D_CurrentStatus {
                                 <div class="status-layer-images">
                                     <div class="obj-top-colour status-layer">
                                         <div class="status-layer-img">
-                                            <a href="<?php echo esc_url($data['initial_state']['swatch_urls']['top']); ?>"
-                                                data-pswp-src="<?php echo esc_url($data['initial_state']['swatch_urls']['top']); ?>"
+                                            <a href="<?php echo esc_url($data['initial_state']['swatch_urls']['top']['url']); ?>"
+                                                data-pswp-src="<?php echo esc_url($data['initial_state']['swatch_urls']['top']['url']); ?>"
                                                 data-pswp-width="700"
                                                 data-pswp-height="1200"
                                                 data-pswp-gallery="tm3d-status-gallery">
@@ -108,7 +108,7 @@ class TM3D_CurrentStatus {
                                                 fetchpriority="low"
                                                 width="150"
                                                 height="150"
-                                                src="<?php echo esc_url($data['initial_state']['swatch_urls']['top']); ?>"
+                                                src="<?php echo esc_url($data['initial_state']['swatch_urls']['top']['thumb_url']); ?>"
                                                 alt="Top Colour image swatch"
                                                 >
                                             </a>
@@ -119,8 +119,8 @@ class TM3D_CurrentStatus {
 
                                     <div class="obj-base status-layer">
                                         <div class="status-layer-img">
-                                            <a href="<?php echo esc_url($data['initial_state']['swatch_urls']['base']); ?>"
-                                                data-pswp-src="<?php echo esc_url($data['initial_state']['swatch_urls']['base']); ?>"
+                                            <a href="<?php echo esc_url($data['initial_state']['swatch_urls']['base']['url']); ?>"
+                                                data-pswp-src="<?php echo esc_url($data['initial_state']['swatch_urls']['base']['url']); ?>"
                                                 data-pswp-width="700"
                                                 data-pswp-height="1200"
                                                 data-pswp-gallery="tm3d-status-gallery">
@@ -130,7 +130,7 @@ class TM3D_CurrentStatus {
                                                     fetchpriority="low"
                                                     width="150"
                                                     height="150"
-                                                    src="<?php echo esc_url($data['initial_state']['swatch_urls']['base']); ?>"
+                                                    src="<?php echo esc_url($data['initial_state']['swatch_urls']['base']['thumb_url']); ?>"
                                                     alt="Base Colour image swatch"
                                                 >
                                             </a>
@@ -141,8 +141,8 @@ class TM3D_CurrentStatus {
 
                                     <div class="obj-metal-edge-veneer status-layer <?php echo (!empty($data['initial_state']['veneer'])) ? '' : 'd-none'; ?>">
                                         <div class="status-layer-img">
-                                            <a href="<?php echo esc_url($data['initial_state']['swatch_urls']['metal']); ?>"
-                                                data-pswp-src="<?php echo esc_url($data['initial_state']['swatch_urls']['metal']); ?>"
+                                            <a href="<?php echo esc_url($data['initial_state']['swatch_urls']['metal']['url']); ?>"
+                                                data-pswp-src="<?php echo esc_url($data['initial_state']['swatch_urls']['metal']['url']); ?>"
                                                 data-pswp-width="886"
                                                 data-pswp-height="187"
                                                 data-pswp-gallery="tm3d-status-gallery">
@@ -152,7 +152,7 @@ class TM3D_CurrentStatus {
                                                     fetchpriority="low"
                                                     width="150"
                                                     height="150"
-                                                    src="<?php echo esc_url($data['initial_state']['swatch_urls']['metal']); ?>"
+                                                    src="<?php echo esc_url($data['initial_state']['swatch_urls']['metal']['thumb_url']); ?>"
                                                     alt="Metal Edge Colour image swatch"
                                                 >
                                             </a>

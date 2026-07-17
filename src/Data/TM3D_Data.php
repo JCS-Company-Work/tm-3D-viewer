@@ -426,17 +426,27 @@
                 switch ($key) {
                     case 'top':
                         $top_option = self::resolveTopColourOption($product_type, $colour);
-                        $swatch_urls[$key] = $top_option['top']['thumb_url'] ?? '';
+                        $swatch_urls[$key] = [
+                            'thumb_url' => $top_option['top']['thumb_url'] ?? '',
+                            'url' => $top_option['top']['url'] ?? '',
+                            
+                        ];
                         break;
                     case 'base':
                         $base_options = self::$product_data['master_values'][$product_type]['base'][$baseType] ?? [];
                         $base_option = self::resolveMasterColourOption($base_options, $colour);
-                        $swatch_urls[$key] = $base_option['thumb_url'] ?? '';
+                        $swatch_urls[$key] = [
+                            'thumb_url' => $base_option['thumb_url'] ?? '',
+                            'url' => $base_option['url'] ?? '',
+                        ];
                         break;
                     case 'metal':
                         $metal_options = self::$product_data['master_values'][$product_type]['metal'] ?? [];
                         $metal_option = self::resolveMasterColourOption($metal_options, $colour);
-                        $swatch_urls[$key] = $metal_option['thumb_url'] ?? '';
+                        $swatch_urls[$key] = [
+                            'thumb_url' => $metal_option['thumb_url'] ?? '',
+                            'url' => $metal_option['url'] ?? '',
+                        ];
                         break;
                     default:
                         $swatch_urls[$key] = '';
