@@ -370,7 +370,7 @@ class TM3D_CurrentStatus {
             // Split on each occurrence of '###cm Table:'
             $specs = preg_split('/(?=\d{3,4}cm Table:)/', $specifications, -1, PREG_SPLIT_NO_EMPTY);
 
-            $full_spec_html .= '<ul class="status-specifications d-none list-none">';
+            $full_spec_html .= '<ul class="status-specifications list-none">';
 
             foreach ($specs as $spec) {
 

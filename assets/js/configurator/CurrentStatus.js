@@ -431,26 +431,17 @@ export default class CurrentStatus {
                 return;
             }
 
-            statusSpecs.classList.add("fade");
-
-            // Animate fade in/out
-            if (statusSpecs.classList.contains("show")) {
-                // Fade out
-                statusSpecs.classList.remove("show");
-                setTimeout(() => {
-                    statusSpecs.classList.add("d-none");
-                    // Update toggle link text based on visibility
-                    toggleLink.textContent = "View Full Technical Specification";
-                }, 400); // match CSS transition duration
-            } else {
-                // Show and fade in
-                statusSpecs.classList.remove("d-none");
-                setTimeout(() => {
-                    statusSpecs.classList.add("show");
-                }, 10); // allow reflow for transition
-                // Update toggle link text based on visibility
+            // Toggle the 'is-open' class and adjust max-height for smooth transition
+            if (statusSpecs.classList.contains('is-open')) {
+                statusSpecs.style.maxHeight = '0px';
+                statusSpecs.classList.remove('is-open');
                 toggleLink.textContent = "Hide Full Technical Specification";
+            } else {
+                statusSpecs.classList.add('is-open');
+                statusSpecs.style.maxHeight = statusSpecs.scrollHeight + 'px';
+                toggleLink.textContent = "View Full Technical Specification";
             }
+
 
         });
 

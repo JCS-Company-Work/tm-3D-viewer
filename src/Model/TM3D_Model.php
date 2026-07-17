@@ -34,14 +34,15 @@
         /**
          * Render the shortcode for the 3D model viewer
          *
+         * @param array $atts Shortcode attributes
          * @return string HTML output for the shortcode
          */
-        public static function render_product_viewer()
+        public static function render_product_viewer($atts = [])
 
         {
 
             // Load models and product data from the database and transient cache
-            self::$data = TM3D_Data::getData();
+            self::$data = TM3D_Data::getData($atts);
             self::$models = self::$data['models'] ?? [];
             self::$product_data = self::$data['product_data'] ?? [];
             self::$initial_state = self::$data['initial_state'] ?? [];
@@ -50,7 +51,7 @@
             TM3D_Assets::enqueue_assets(self::$data);
 
             // Render the import map and the configurator drawers
-            return self::import_map_markup() . self::render_drawers();
+            return self::import_map_markup() . self::render_drawers($atts);
 
         }
 
@@ -121,9 +122,10 @@
         /**
          * Render config drawers
          *
+         * @param array $atts Shortcode attributes
          * @return string
          */
-        public static function render_drawers(): string {
+        public static function render_drawers($atts = []): string {
 
             // Guard against empty models array
             if (empty(self::$models)) {
@@ -166,6 +168,12 @@
             // Get allowed metals for the current top selection from the colour options data
             $metals_for_current_top = $filtered_colour_options[$current_top]['metal'] ?? [];
 
+            // Determine visibility based on single product page context
+            $is_single_product = !empty($atts['single']);
+            $has_metal = !empty(self::$initial_state['veneer']);
+            $hide_product_type = $is_single_product ? 'display:none;' : '';
+            $hide_metal = !$has_metal ? 'display:none;' : '';
+
             if (!self::$product_data) {
                 return '<div class="configurator-error">Missing configurator cache</div>';
             }
@@ -187,7 +195,7 @@
                     <div class="configurator last-opened-none" id="configurator">
                         
                         <!-- 3D viewer -->
-                        <div id="obj3dviewer" item-name="<?php echo esc_attr(self::$initial_state['sku']); ?>" data-version="<?php echo esc_attr(TMPC_VERSION); ?>">
+                        <div id="obj3dviewer" item-name="<?php echo esc_attr(self::$initial_state['sku']); ?>" data-version="<?php echo esc_attr(TM3D_VERSION); ?>">
                             <section id="loading-screen"><div id="loader"></div></section>
                             <a href="#" class="obj3dviewer-toggle">Full Screen</a>
                         </div>
@@ -196,7 +204,7 @@
                         <div class="playground">
                             <div class="config-options">
                                 <ul class="config-option-buttons">
-                                    <li class="config-option-product-type">
+                                    <li class="config-option-product-type" style="<?php echo $hide_product_type; ?>">
                                         <div class="config-option-button" id="option-product-type">
                                             <i class="fa-regular fa-circle-1"></i><span>Model</span> Select model
                                         </div>
@@ -216,7 +224,7 @@
                                             <i class="fa-regular fa-circle-4"></i><span>Base Finish</span> Select base
                                         </div>      
                                     </li>
-                                    <li class="config-option-metal-edge-veneer" style="display: block;">
+                                    <li class="config-option-metal-edge-veneer" style="<?php echo $hide_metal; ?>display: block;">
                                         <div class="config-option-button <?php echo (self::$initial_state['veneer']) ? '' : 'inactive'; ?>" id="option-metal-edge-veneer">
                                             <i class="fa-regular fa-circle-5"></i><span>Metal Edge</span> Select edge
                                         </div>
@@ -232,7 +240,7 @@
                                 <div class="wapf">
                                     <div class="wapf-wrapper">
                                         <div class="wapf-field-group">
-                                            <div id="product-type-container">
+                                            <div id="product-type-container" style="<?php echo $hide_product_type; ?>">
                                                 <div class="obj-product-type wapf-field-container">
                                                     <div class="wapf-field-label"><label><span>Product Type</span></label></div>
                                                     <div class="wapf-field-group">
@@ -350,7 +358,7 @@
                                                     </div>
                                                 </div>
                                             </div> 
-                                            <div id="metal-container">   
+                                            <div id="metal-container" style="<?php echo $hide_metal; ?>">   
                                                 <div class="obj-metal-edge-veneer wapf-field-container wapf-field-image-swatch field-6a9c491 wapf-required" style="width:100%;" for="6a9c491">
                                                     <div class="wapf-field-label">
                                                         <label><span>Metal Edge Veneer</span> <abbr class="required" title="required">*</abbr></label>

@@ -12,9 +12,10 @@
         /**
          * Load models and product data from the database and transient cache
          *
+         * @param array $atts Shortcode attributes
          * @return array Assoc array of models and product data
          */
-        public static function getData()
+        public static function getData($atts = [])
 
         {
             // Get all models and their associated SKU values from the database
@@ -23,8 +24,14 @@
             // Get all product data from transient cache
             self::$product_data = self::getProductData();
 
+            // When rendering on single product page, force the product ID to current queried object
+            $forced_id = null;
+            if (!empty($atts['single'])) {
+                $forced_id = get_queried_object_id();
+            }
+
             // Check URL for initial product state parameters or defaults
-            $initial_state = self::productInitialState();
+            $initial_state = self::productInitialState($forced_id);
 
             return [
                 'models' => self::$models,
@@ -54,8 +61,8 @@
             // Retrieve transient again after fetching from Google Sheets
             $cached = get_transient('tm3d_colour_options_all');
 
-            // Return the cached data
-            return $cached;
+            // Return the cached data, or empty array if still not available
+            return is_array($cached) ? $cached : [];
 
         }
 
@@ -165,9 +172,10 @@
         /**
          * Check url for params or if none determine default values from postmeta
          *
+         * @param int|null $forced_id Optional product ID to lock to (overrides URL id param)
          * @return array Returns array of selected options to be used for image layer rendering and current status display
          */
-        public static function productInitialState() {
+        public static function productInitialState($forced_id = null) {
 
             // Get the request URI and parse the query string
             $request_uri = $_SERVER['REQUEST_URI'] ?? '';
@@ -180,6 +188,11 @@
 
             // Parse the query string into an associative array
             parse_str($query, $params);
+
+            // If forced_id is set, override any id param and lock to current product
+            if ($forced_id) {
+                $params['id'] = $forced_id;
+            }
 
             // Define the keys to check for in the query parameters
             $keys = ['id', 'colour', 'base', 'veneer', 'model'];
