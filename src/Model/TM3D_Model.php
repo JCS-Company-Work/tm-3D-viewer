@@ -206,27 +206,27 @@
                                 <ul class="config-option-buttons">
                                     <li class="config-option-product-type" style="<?php echo $hide_product_type; ?>">
                                         <div class="config-option-button" id="option-product-type">
-                                            <i class="fa-regular fa-circle-1"></i><span>Model</span> Select model
+                                            <i class="fa-regular"></i><span>Model</span> Select model
                                         </div>
                                     </li>
                                     <li class="config-option-model">
                                         <div class="config-option-button" id="option-model">
-                                            <i class="fa-regular fa-circle-2"></i><span>Size</span> Select size
+                                            <i class="fa-regular"></i><span>Size</span> Select size
                                         </div>
                                     </li>
                                     <li class="config-option-top-colour">
                                         <div class="config-option-button" id="option-top-colour">
-                                            <i class="fa-regular fa-circle-3"></i><span>Surface</span> Select surface
+                                            <i class="fa-regular"></i><span>Surface</span> Select surface
                                         </div>
                                     </li>
                                     <li class="config-option-base">
                                         <div class="config-option-button" id="option-base">
-                                            <i class="fa-regular fa-circle-4"></i><span>Base Finish</span> Select base
+                                            <i class="fa-regular"></i><span>Base Finish</span> Select base
                                         </div>      
                                     </li>
-                                    <li class="config-option-metal-edge-veneer" style="<?php echo $hide_metal; ?>display: block;">
+                                    <li class="config-option-metal-edge-veneer" style="<?php echo $hide_metal; ?>">
                                         <div class="config-option-button <?php echo (self::$initial_state['veneer']) ? '' : 'inactive'; ?>" id="option-metal-edge-veneer">
-                                            <i class="fa-regular fa-circle-5"></i><span>Metal Edge</span> Select edge
+                                            <i class="fa-regular"></i><span>Metal Edge</span> Select edge
                                         </div>
                                     </li>
                                 </ul>

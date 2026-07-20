@@ -50,7 +50,7 @@
             // Retrieve transient
             $cached = get_transient('tm3d_colour_options_all');
 
-            //If cached data exists, return it
+            // If cached data exists, return it
             // if ($cached !== false) {
             //     return $cached;
             // }
@@ -61,8 +61,8 @@
             // Retrieve transient again after fetching from Google Sheets
             $cached = get_transient('tm3d_colour_options_all');
 
-            // Return the cached data, or empty array if still not available
-            return is_array($cached) ? $cached : [];
+            // Return the cached data
+            return $cached;
 
         }
 

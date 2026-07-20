@@ -13,10 +13,10 @@
         public static function getDataFromGoogleSheets($bypassToken = false) {
 
             // Get expected token from environment variable
-            $expected_token = $_ENV['TMPC_UPDATE_TOKEN'] ?? null;
+            $expected_token = $_ENV['TM3D_UPDATE_TOKEN'] ?? null;
 
             // Get provided token from request headers
-            $provided_token = $_SERVER['HTTP_X_TMPC_TOKEN'] ?? null;
+            $provided_token = $_SERVER['HTTP_X_TM3D_TOKEN'] ?? null;
 
             // If not bypassing and expected token is set and does not match the provided token, return a 403 error
             if (!$bypassToken && (!$expected_token || $provided_token !== $expected_token)) {
@@ -24,35 +24,41 @@
                 return new \WP_Error('forbidden', 'Invalid or missing token', array('status' => 403));
             }
 
-            // fetch data from Google Sheets API using the Google API PHP Client
-            require_once(TM3D_PATH . '/google-api-client/vendor/autoload.php');
+            try {
 
-            // Set up Google Client with credentials and cell ranges
-            $client = new \Google_Client();
-            $client->setApplicationName($_ENV['GOOGLE_APPLICATION_NAME'] ?? '');
-            $client->setScopes([\Google_Service_Sheets::SPREADSHEETS]);
-            $client->setAccessType('offline');
-            $client->setAuthConfig(TM3D_PATH . ($_ENV['GOOGLE_PRIVATE_KEY_PATH'] ?? ''));
-            $service = new \Google_Service_Sheets($client);
-            $spreadsheetId = $_ENV['GOOGLE_SPREADSHEET_ID'] ?? '';
+                // Fetch data from Google Sheets API using the Google API PHP Client
+                require_once(TM3D_PATH . '/google-api-client/vendor/autoload.php');
 
-            // Specifiy tabs and ranges to pull from the spreadsheet
-            $ranges = [
-                'tops!A:C',
-                'basecolours!A:C',
-                'horizontalbases!A:B',
-                'metalcolours!A:B',
-                'colouroptions!A:E',
-            ];
+                // Set up Google Client with credentials and cell ranges
+                $client = new \Google_Client();
+                $client->setApplicationName($_ENV['GOOGLE_APPLICATION_NAME'] ?? '');
+                $client->setScopes([\Google_Service_Sheets::SPREADSHEETS]);
+                $client->setAccessType('offline');
+                $client->setAuthConfig(TM3D_PATH . ($_ENV['GOOGLE_PRIVATE_KEY_PATH'] ?? ''));
+                $service = new \Google_Service_Sheets($client);
+                $spreadsheetId = $_ENV['GOOGLE_SPREADSHEET_ID'] ?? '';
 
-            $response = $service->spreadsheets_values->batchGet($spreadsheetId, [
-                'ranges' => $ranges
-            ]);
+                // Specify tabs and ranges to pull from the spreadsheet
+                $ranges = [
+                    'tops!A:C',
+                    'basecolours!A:C',
+                    'horizontalbases!A:B',
+                    'metalcolours!A:B',
+                    'colouroptions!A:E',
+                ];
 
-            $valueRanges = $response->getValueRanges();
+                $response = $service->spreadsheets_values->batchGet($spreadsheetId, [
+                    'ranges' => $ranges
+                ]);
 
-            // Process the fetched data to build the colour options 
-            self::formatColourData($valueRanges);
+                $valueRanges = $response->getValueRanges();
+
+                // Process the fetched data to build the colour options
+                self::formatColourData($valueRanges);
+
+            } catch (\Throwable $e) {
+                error_log('TM3D Google Sheets error: ' . $e->getMessage());
+            }
 
         }
 
@@ -112,9 +118,6 @@
                         // Sub divide bases into wood and tile bases depending on whether the product is in the wood category (id 199)
                         $baseColours = self::filterDataByWoodCategory($baseColours);
 
-                        // // Sort base colours alphabetically correct order in popout drawers
-                        // sort($baseColours);
-
                         // Build data array, base colours first as these are present for all top types
                         $data = [
                             'top' => $top_colour[0],
@@ -144,21 +147,6 @@
                     }
 
                 }
-
-                // Set transients for each top type
-                // foreach($colour_options as $type => $options) {
-
-                //     // Save data without master values first
-                //     set_transient('tm3d_colour_options_' . $type, $options, 2592000); 
-
-                //     // Add master values to the colour options array before caching
-                //     $options['master_values'] = $colour_options['master_values'][$type] ?? [];
-                    
-                //     // Add horizontal bases to the colour options array before caching
-                //     $options['horizontal_bases'] = $colour_options['horizontal_bases'] ?? [];
-
-                //     set_transient('tm3d_colour_options_' . $type . '_master', $options, 2592000);    
-                // }
 
                 // Create over master transient containing all values for use in 3D viewer shortcode
                 set_transient('tm3d_colour_options_all', $colour_options, 2592000);

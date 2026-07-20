@@ -11,10 +11,6 @@
          */
         public static function init() {
             
-            // Clear transient cache for product models to ensure fresh data with new fields
-            delete_transient('tm3d_product_models');
-            delete_transient('tm3d_colour_options_all');
-            
             // List of modules to initialize
             $modules = [
                 \TmThreeViewer\Assets\TM3D_Assets::class,

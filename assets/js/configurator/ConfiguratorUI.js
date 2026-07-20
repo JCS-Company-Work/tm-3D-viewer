@@ -40,6 +40,30 @@ export default class ConfiguratorUI {
                 configWrapper.classList.remove('config-open');
             });
         });
+
+        this.updateStepNumbers();
+    }
+
+    updateStepNumbers() {
+
+        const steps = document.querySelectorAll('.config-option-button');
+
+        let step = 1;
+
+        steps.forEach(button => {
+            const li = button.closest('li');
+
+            // Skip hidden items
+            if (!li || li.offsetParent === null) {
+                return;
+            }
+
+            const icon = button.querySelector('i');
+
+            if (icon) {
+                icon.className = `fa-regular fa-circle-${step++}`;
+            }
+        });
     }
 
     /**

@@ -3,7 +3,6 @@
     namespace TmThreeViewer\ColourOptions;
 
     use TmThreeViewer\ColourOptions\TM3D_ColourOptionsData;
-    use TmThreeViewer\ColourOptions\TM3D_ColourOptionsService;
 
     /**
      * Class to create and update colour data and default colour sets enforced in the browser
