@@ -22,7 +22,7 @@ jobs:
 
       - name: Deploy to Staging
         run: |
-          rsync -az --delete \
+          rsync -azi --delete \
             --exclude=".git" \
             --exclude=".github" \
             -e "ssh -i ~/.ssh/id_ed25519" \
