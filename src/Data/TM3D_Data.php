@@ -551,7 +551,6 @@
 
             foreach (self::$models as $collection) {
                 foreach ($collection as $product) {
-                    error_log('Checking product ID: ' . gettype($product['id']) . ' against param ID: ' . gettype($id)); // Log the IDs being compared
                     if ($product['id'] === $id) {
                         $model = $product;
                         break 2;

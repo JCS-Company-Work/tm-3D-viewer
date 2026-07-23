@@ -58,7 +58,7 @@
 
             // Check if Imagick is available
             if (!class_exists('Imagick')) {
-                error_log('[TMPC] Imagick not available');
+                error_log('Imagick not available');
                 return null;
             }
 
