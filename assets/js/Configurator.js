@@ -420,6 +420,29 @@ export default class Configurator {
             // Update QR code after the URL is synchronised.
             this.currentStatus.createQR();
 
+            // Fire native change events for integrations relying on form
+            // control changes (e.g. wishlist state updates).
+            const changedInputs = [
+                document.querySelector('.obj-top-colour input[type="radio"]:checked'),
+                document.querySelector('.obj-base input[type="radio"]:checked'),
+                document.querySelector('.obj-metal-edge-veneer input[type="radio"]:checked')
+            ].filter(Boolean);
+
+            changedInputs.forEach((input) => {
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+
+            // Notify integrations (e.g. wishlist button state) that a preset
+            // has been applied programmatically.
+            document.dispatchEvent(new CustomEvent('tm3d:config-applied', {
+                detail: {
+                    source: 'created-by-us',
+                    top,
+                    base,
+                    metal
+                }
+            }));
+
             const modelSection = document.getElementById('3d-model');
             if (modelSection) {
                 modelSection.scrollIntoView({ behavior: 'smooth', block: 'start' });

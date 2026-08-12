@@ -401,6 +401,7 @@
                 'swatch_urls' => $swatch_urls,
                 'permalink' => $selected_model['permalink'] ?? '',
                 'collection' => self::determineProductCollection($selected_model['id'] ?? ''),
+                'use_horizontal_bases' => $selected_model['use_horizontal_bases'] ?? false,
             ];
 
             // Return the combined array of default values

@@ -203,7 +203,22 @@ class TM3D_CurrentStatus {
                                     >Save Your Design</a>
                                     <div class="tm-compare-status" aria-live="polite" aria-atomic="true"></div>
                                 </div>
-                                <a href="/wishlist" class="save-share-download-btn">Saved Designs</a>
+                                <?php
+                                    $wishlist_share_token = isset( $_COOKIE['tm_wishlist_share_token'] ) ? sanitize_text_field( wp_unslash( $_COOKIE['tm_wishlist_share_token'] ) ) : '';
+                                    $wishlist_path = 'wishlist';
+
+                                    if ( ! empty( $wishlist_share_token ) ) {
+                                        $wishlist_path = 'wishlist/share/' . rawurlencode( $wishlist_share_token );
+                                    }
+
+                                    $wishlist_url = trailingslashit( home_url( $wishlist_path ) );
+
+                                    if ( isset( $_GET['tvembed'] ) ) {
+                                        $tvembed = sanitize_text_field( wp_unslash( $_GET['tvembed'] ) );
+                                        $wishlist_url = add_query_arg( 'tvembed', ( $tvembed === '' ? '1' : $tvembed ), $wishlist_url );
+                                    }
+                                ?>
+                                <a href="<?php echo esc_url( $wishlist_url ); ?>" class="save-share-download-btn">Saved Designs</a>
                                 <a 
                                     href="#" 
                                     class="save-share-download-btn share-whatsapp-btn" 
