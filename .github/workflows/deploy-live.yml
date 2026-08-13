@@ -27,20 +27,12 @@ jobs:
 
       - name: Deploy to Live
         run: |
-          rsync -azc --delete \
-            --omit-dir-times \
-            --no-times \
-            --no-perms \
-            --no-owner \
-            --no-group \
-            --exclude=".git" \
-            --exclude=".github" \
-            --exclude=".env" \
-            --exclude=".DS_Store" \
-            --exclude="vendor/" \
-            -e "ssh -i ~/.ssh/id_ed25519" \
-            ./ \
-            ${{ secrets.TM_STORE_SSH_USER }}@${{ secrets.SSH_HOST }}:${{ vars.LIVE_DEPLOY_PATH }}
+          DEST="${{ secrets.TM_STORE_SSH_USER }}@${{ secrets.SSH_HOST }}:${{ vars.LIVE_DEPLOY_PATH }}"
+          SSH="ssh -i ~/.ssh/id_ed25519"
+
+          rsync -azc --omit-dir-times --no-times --no-perms --no-owner --no-group -e "$SSH" ./assets/ "$DEST/assets/"
+          rsync -azc --omit-dir-times --no-times --no-perms --no-owner --no-group -e "$SSH" ./src/ "$DEST/src/"
+          rsync -azc --omit-dir-times --no-times --no-perms --no-owner --no-group -e "$SSH" ./tm-three-viewer.php "$DEST/tm-three-viewer.php"
 
       - name: Complete
         run: echo "Live deployment complete."
