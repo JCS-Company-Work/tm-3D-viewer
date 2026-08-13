@@ -330,8 +330,13 @@ export default class Configurator {
             const selectedOption = modelSelect.options[modelSelect.selectedIndex];
             const label = selectedOption.getAttribute('data-label');
 
-            // Update URL with new model size (also updates cart form action)
-            this.ui.updateURL({'model': label});
+            // Keep the configured URL complete when the model changes.
+            this.ui.updateURL({
+                colour: document.querySelector('.obj-top-colour input:checked')?.value || '',
+                veneer: document.querySelector('.obj-metal-edge-veneer input:checked')?.value || '',
+                secondcolour: document.querySelector('.obj-base input:checked')?.value || '',
+                model: label || ''
+            });
 
         });
 
