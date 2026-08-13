@@ -30,7 +30,7 @@ jobs:
           DEST="${{ secrets.TM_STORE_SSH_USER }}@${{ secrets.SSH_HOST }}:${{ vars.LIVE_DEPLOY_PATH }}"
           SSH="ssh -i ~/.ssh/id_ed25519"
 
-          rsync -azc --omit-dir-times --no-times --no-perms --no-owner --no-group -e "$SSH" ./assets/ "$DEST/assets/"
+          rsync -azc --omit-dir-times --no-times --no-perms --no-owner --no-group --exclude="models/" -e "$SSH" ./assets/ "$DEST/assets/"
           rsync -azc --omit-dir-times --no-times --no-perms --no-owner --no-group -e "$SSH" ./src/ "$DEST/src/"
           rsync -azc --omit-dir-times --no-times --no-perms --no-owner --no-group -e "$SSH" ./tm-three-viewer.php "$DEST/tm-three-viewer.php"
 
