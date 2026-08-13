@@ -513,10 +513,8 @@ export default class ConfiguratorUI {
 
             }
 
-            const requestedModel = window.TM3DPlugin?.data?.initial_state?.model;
-
-            // Prefer the requested URL size, falling back to the product default.
-            if(size.label === requestedModel || (!requestedModel && size.is_default)) {
+            // Set default selection
+            if(size.is_default) {
                 option.selected = true;
             }
 
@@ -525,8 +523,9 @@ export default class ConfiguratorUI {
 
         });
 
-        const selectedModelSize = modelSelectEl.value || '';
-        this.updateURL({ model: selectedModelSize });
+        // Add base model size to url
+        const defaultModelSize = model?.model_sizes?.find(size => size.is_default)?.label || '';
+        this.updateURL({ model: defaultModelSize });
 
     }
 

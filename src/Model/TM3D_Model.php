@@ -409,7 +409,7 @@
                                                                     data-label="<?php echo esc_attr($model['label']); ?>" 
                                                                     data-wapf-price="<?php echo esc_attr($inc_vat); ?>" 
                                                                     data-ex-vat="<?php echo esc_attr($model['price']); ?>" 
-                                                                    <?php echo strtolower($model['label']) === strtolower(self::$initial_state['model'] ?? self::$initial_state['default_model_size'] ?? '') ? 'selected' : ''; ?>>
+                                                                    <?php echo $model['is_default'] ? 'selected' : ''; ?>>
                                                                     <?php echo esc_html($model['label']); ?>
                                                                     <?php
                                                                     if ($model['price'] > 0) {
