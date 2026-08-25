@@ -189,6 +189,11 @@
             // Parse the query string into an associative array
             parse_str($query, $params);
 
+            // The viewer iframe uses WordPress's p parameter for the product ID
+            if (empty($params['id']) && !empty($params['p'])) {
+                $params['id'] = absint($params['p']);
+            }
+
             // If forced_id is set, override any id param and lock to current product
             if ($forced_id) {
                 $params['id'] = $forced_id;
@@ -208,7 +213,14 @@
 
             // If none of the relevant parameters are present, return default values
             if (!$hasValue) {
-                return self::return_defaults();
+                return !empty($params['id'])
+                    ? self::return_defaults((int) $params['id'])
+                    : self::return_defaults();
+            }
+
+            // If an ID is supplied without colour options, use that product's defaults
+            if (!empty($params['id']) && empty($params['colour'])) {
+                return self::return_defaults((int) $params['id']);
             }
 
             // If we have id and colour we have enough to create a valid initial state and product
@@ -313,22 +325,22 @@
          *
          * @return array default post meta values
          */
-        public static function return_defaults() {
+        public static function return_defaults($model_id = 0) {
 
             // Guard against empty model data
             if (empty(self::$models) || !is_array(self::$models)) {
                 return [];
             }
 
+            // Prefer an explicitly supplied model ID, such as an ID-only viewer URL
+            $selected_model = $model_id > 0 ? self::get_model_by_id($model_id) : null;
+
             // Check ACF for default model ID for the current product page
             $queried_id = get_queried_object_id();
             $configured_default_id = (int) get_field('3d_model_default_id', $queried_id);
 
-            // Set selected model to null
-            $selected_model = null;
-
             // If configured default ID exists, use it to get the model
-            if ($configured_default_id > 0) {
+            if (!$selected_model && $configured_default_id > 0) {
                 $selected_model = self::get_model_by_id($configured_default_id);
             }
 
