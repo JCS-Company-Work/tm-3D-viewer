@@ -104,13 +104,13 @@
             // Parse URL query to get selected options (if any)
             $query = parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY);
             $params = [];
+            if (!empty($query)) {
+                parse_str($query, $params);
+            }
             $image_layers = [];
 
-            // If colour param exists in URL 
-            if (!empty($query)) {
-
-                // Parse query string into params array
-                parse_str($query, $params);
+            // If a product colour param exists in the URL
+            if (!empty($params['colour'])) {
 
                 // Extract and format colour param for lookup
                 $colour = isset($params['colour']) ? str_replace(' ', '_', strtolower(sanitize_text_field(wp_unslash($params['colour'])))) : null;
