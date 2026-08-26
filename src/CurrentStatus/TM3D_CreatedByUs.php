@@ -69,6 +69,9 @@
 
             $sku = $product->get_sku();
 
+            // Determine base type (wood or tile) based on product category
+            $base_type = has_term(199, 'product_cat', $id) ? 'wood' : 'tile';
+
             // Check if we've already generated configs for this product to avoid creating new ones on every page load
             $existing_configs = get_post_meta($id, '_tmpc_created_by_us_configs', true);
 
@@ -116,15 +119,13 @@
                     // Assign top colour
                     $top = $colour_option['top']['name'];
 
-                    // Flatten available base options (tile/wood) to a single list of colour names.
-                    $base_candidates = [];
-                    foreach ((array) ($colour_option['base'] ?? []) as $base_group) {
-                        foreach ((array) $base_group as $base_name) {
-                            if (is_string($base_name) && $base_name !== '') {
-                                $base_candidates[] = $base_name;
-                            }
+                    // Get only the valid base colours for this product's wood or tile type.
+                    $base_candidates = array_values(array_filter(
+                        (array) ($colour_option['base'][$base_type] ?? []),
+                        function ($base_name) {
+                            return is_string($base_name) && $base_name !== '';
                         }
-                    }
+                    ));
 
                     if (empty($base_candidates)) {
                         continue;
