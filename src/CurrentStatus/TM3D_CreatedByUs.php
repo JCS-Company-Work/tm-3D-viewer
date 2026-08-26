@@ -72,16 +72,34 @@
             // Check if we've already generated configs for this product to avoid creating new ones on every page load
             $existing_configs = get_post_meta($id, '_tmpc_created_by_us_configs', true);
 
+            // Check whether configs are stale by comparing the timestamp of 
+            // when they were generated to the timestamp of when the colour options sheet was last updated
+            $generated_at = (int) get_post_meta(
+                $id,
+                '_tmpc_created_by_us_configs_updated_at',
+                true
+            );
+
+            $sheet_updated_at = (int) get_option(
+                'tm3d_colour_options_updated_at',
+                0
+            );
+
+            $configs_are_stale = !$generated_at || $generated_at < $sheet_updated_at;
+
             // If configs already exist for this product, use them. Otherwise, generate new
-            if ($existing_configs) {
+            if ($existing_configs && !$configs_are_stale) {
                 $configs = $existing_configs;
             } else {
                 // Array to hold configs
                 $configs = [];
             }
 
-            // If no existing configs and product data contains colour options, generate configs
-            if (empty($existing_configs) && !empty($colour_options_by_top)) {
+            // If no existing configs or if they are stale, generate new configs from the colour options sheet
+            if ((!$existing_configs || $configs_are_stale) && !empty($colour_options_by_top)) {
+
+                // Reset configs array
+                $configs = [];
                 
                 // Re-index array keys
                 $colour_options = array_values($colour_options_by_top);
@@ -151,6 +169,10 @@
         
                 // Save configs to post meta for future order
                 update_post_meta($id, '_tmpc_created_by_us_configs', $configs);
+
+                // Save timestamp of when configs were generated for this product to post meta for cache busting
+                update_post_meta($id, '_tmpc_created_by_us_configs_updated_at', get_option('tm3d_colour_options_updated_at', 0));
+
             }
 
 

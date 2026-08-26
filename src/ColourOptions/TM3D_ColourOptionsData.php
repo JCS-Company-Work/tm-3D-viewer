@@ -151,6 +151,9 @@
                 // Create over master transient containing all values for use in 3D viewer shortcode
                 set_transient('tm3d_colour_options_all', $colour_options, 2592000);
 
+                // Add timestamp to options table to indicate when colour options were last updated, for use in cache busting
+                update_option('tm3d_colour_options_updated_at', time(), false);
+
             }
 
         }

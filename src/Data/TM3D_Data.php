@@ -51,9 +51,9 @@
             $cached = get_transient('tm3d_colour_options_all');
 
             // If cached data exists, return it
-            // if ($cached !== false) {
-            //     return $cached;
-            // }
+            if ($cached !== false) {
+                return $cached;
+            }
 
             // If no cached data, fetch from Google Sheets (internal call, bypass token)
             TM3D_ColourOptionsData::getDataFromGoogleSheets(true);
