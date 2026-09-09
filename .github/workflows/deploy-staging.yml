@@ -37,11 +37,8 @@ jobs:
             ./ \
             ${{ secrets.TM_STORE_SSH_USER }}@${{ secrets.SSH_HOST }}:${{ vars.STAGING_DEPLOY_PATH }}
 
-      - name: Install dependencies
-        run: npm install
-
       - name: Install Playwright
-        run: npx playwright install --with-deps chromium
+        run: npx playwright@1.61.1 install --with-deps chromium
 
       - name: Run PDF test
         run: npx playwright test tm3d-defaults.spec.js
