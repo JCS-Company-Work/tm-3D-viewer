@@ -18,7 +18,7 @@
         }
 
         /**
-         * Add product to cart via AJAX (includes swatches on their single product page)
+         * Add product to cart via AJAX (includes swatches on their single product pages)
          */
         public static function ajax_add_product_to_cart() {
 

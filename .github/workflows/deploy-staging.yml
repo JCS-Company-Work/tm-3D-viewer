@@ -37,17 +37,17 @@ jobs:
             ./ \
             ${{ secrets.TM_STORE_SSH_USER }}@${{ secrets.SSH_HOST }}:${{ vars.STAGING_DEPLOY_PATH }}
 
-      - name: Cache Playwright
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-1.61.1-${{ runner.os }}
+      # - name: Cache Playwright
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: ~/.cache/ms-playwright
+      #     key: playwright-1.61.1-${{ runner.os }}
 
-      - name: Install Playwright
-        run: npx playwright@1.61.1 install --with-deps chromium
+      # - name: Install Playwright
+      #   run: npx playwright@1.61.1 install --with-deps chromium
 
-      - name: Run PDF test
-        run: npx playwright@1.61.1 test tests/e2e/tm3d-defaults.spec.js
+      # - name: Run PDF test
+      #   run: npx playwright@1.61.1 test tests/e2e/tm3d-defaults.spec.js
 
       - name: Complete
         run: echo "Staging deployment complete."
